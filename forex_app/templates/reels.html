@@ -1,0 +1,847 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>FXPulse Reels — Forex News in Vertical Reel Stream</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📱</text></svg>">
+  <style>
+    :root {
+      --bg-black: #05070a;
+      --bg-card: #0e1420;
+      --border-color: rgba(255, 255, 255, 0.1);
+      --text-main: #f0f4fc;
+      --text-muted: #8e9db5;
+      --accent-cyan: #00d2ff;
+      --accent-blue: #2970ff;
+      --bullish: #00e676;
+      --bullish-glow: rgba(0, 230, 118, 0.25);
+      --bearish: #ff3366;
+      --bearish-glow: rgba(255, 51, 102, 0.25);
+      --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: var(--bg-black);
+      color: var(--text-main);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      overflow: hidden;
+      height: 100vh;
+      width: 100vw;
+      user-select: none;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ---------------- Top Floating Navigation ---------------- */
+    .reels-top-nav {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 64px;
+      z-index: 50;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 20px;
+      background: linear-gradient(180deg, rgba(5, 7, 10, 0.95) 0%, rgba(5, 7, 10, 0.6) 80%, transparent 100%);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    .nav-left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .btn-back {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 7px 14px;
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid var(--border-color);
+      border-radius: 20px;
+      color: #fff;
+      font-size: 0.82rem;
+      font-weight: 600;
+      text-decoration: none;
+      transition: all 0.2s ease;
+    }
+    .btn-back:hover {
+      background: rgba(255, 255, 255, 0.16);
+      border-color: var(--accent-cyan);
+    }
+
+    .brand-reel {
+      font-size: 1.05rem;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+      color: #fff;
+    }
+    .brand-reel span {
+      color: var(--accent-cyan);
+    }
+
+    /* Genre Dropdown in Top Nav */
+    .genre-dropdown-wrap {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .genre-select {
+      background: #131b2a;
+      color: #fff;
+      border: 1px solid rgba(0, 210, 255, 0.3);
+      padding: 8px 16px;
+      border-radius: 24px;
+      font-size: 0.88rem;
+      font-weight: 700;
+      outline: none;
+      cursor: pointer;
+      box-shadow: 0 0 15px rgba(0, 210, 255, 0.15);
+      transition: all 0.2s ease;
+    }
+    .genre-select:hover, .genre-select:focus {
+      border-color: var(--accent-cyan);
+      box-shadow: 0 0 20px rgba(0, 210, 255, 0.3);
+      background: #182338;
+    }
+
+    .nav-right {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .reel-counter-badge {
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid var(--border-color);
+      padding: 5px 12px;
+      border-radius: 16px;
+      font-size: 0.78rem;
+      font-family: var(--font-mono);
+      font-weight: 600;
+      color: var(--accent-cyan);
+    }
+
+    /* ---------------- Vertical Reel Scroller ---------------- */
+    .reels-container {
+      width: 100vw;
+      height: 100vh;
+      overflow-y: scroll;
+      scroll-snap-type: y mandatory;
+      scrollbar-width: none;
+      -ms-overflow-style: none;
+      scroll-behavior: smooth;
+    }
+    .reels-container::-webkit-scrollbar {
+      display: none;
+    }
+
+    .reel-slide {
+      width: 100vw;
+      height: 100vh;
+      scroll-snap-align: start;
+      scroll-snap-stop: always;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      padding: 74px 16px 20px;
+    }
+
+    /* The Instagram Reel Card */
+    .reel-card {
+      width: 100%;
+      max-width: 480px;
+      height: calc(100vh - 96px);
+      max-height: 840px;
+      border-radius: 24px;
+      border: 1px solid var(--border-color);
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 24px 22px 20px;
+      overflow: hidden;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.8), 0 0 1px rgba(255, 255, 255, 0.2);
+      transition: transform 0.3s ease;
+    }
+
+    /* Ambient Sentiment Backgrounds */
+    .reel-card.sentiment-bullish {
+      background: radial-gradient(circle at 50% 15%, rgba(0, 230, 118, 0.18) 0%, #0d151c 65%, #070b10 100%);
+      border-color: rgba(0, 230, 118, 0.3);
+    }
+    .reel-card.sentiment-bearish {
+      background: radial-gradient(circle at 50% 15%, rgba(255, 51, 102, 0.18) 0%, #170e14 65%, #0a0709 100%);
+      border-color: rgba(255, 51, 102, 0.3);
+    }
+    .reel-card.sentiment-neutral {
+      background: radial-gradient(circle at 50% 15%, rgba(0, 210, 255, 0.14) 0%, #0f1624 65%, #07090f 100%);
+      border-color: rgba(0, 210, 255, 0.25);
+    }
+
+    /* Story Progress Bar */
+    .story-progress-bar {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 3px;
+      background: rgba(255, 255, 255, 0.15);
+    }
+    .story-progress-fill {
+      height: 100%;
+      background: var(--accent-cyan);
+      width: 0%;
+      transition: width 0.1s linear;
+    }
+
+    /* Top Reel Header */
+    .card-top {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .source-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .source-profile {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .source-avatar {
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #00d2ff 0%, #2970ff 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      font-size: 0.95rem;
+      color: #fff;
+      box-shadow: 0 0 10px rgba(0, 210, 255, 0.4);
+    }
+    .source-info {
+      display: flex;
+      flex-direction: column;
+    }
+    .source-name {
+      font-size: 0.88rem;
+      font-weight: 700;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+    .verified-badge {
+      color: #00d2ff;
+      font-size: 0.8rem;
+    }
+    .source-time {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+    }
+
+    /* Badges Row */
+    .pill-badges {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .reel-pill {
+      font-size: 0.74rem;
+      font-weight: 800;
+      padding: 4px 10px;
+      border-radius: 20px;
+      letter-spacing: 0.4px;
+      text-transform: uppercase;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+    }
+    .pill-pair {
+      background: rgba(41, 112, 255, 0.2);
+      border: 1px solid rgba(41, 112, 255, 0.4);
+      color: #70a1ff;
+      font-family: var(--font-mono);
+    }
+    .pill-high-impact {
+      background: rgba(255, 145, 0, 0.2);
+      border: 1px solid rgba(255, 145, 0, 0.5);
+      color: #ff9100;
+    }
+    .pill-bullish {
+      background: rgba(0, 230, 118, 0.18);
+      border: 1px solid rgba(0, 230, 118, 0.4);
+      color: var(--bullish);
+    }
+    .pill-bearish {
+      background: rgba(255, 51, 102, 0.18);
+      border: 1px solid rgba(255, 51, 102, 0.4);
+      color: var(--bearish);
+    }
+
+    /* Middle Story Content */
+    .card-middle {
+      margin: auto 0;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+    .reel-title {
+      font-size: 1.35rem;
+      font-weight: 800;
+      line-height: 1.3;
+      color: #ffffff;
+      text-shadow: 0 2px 8px rgba(0, 0, 0, 0.6);
+    }
+    .reel-summary-box {
+      background: rgba(10, 15, 25, 0.6);
+      backdrop-filter: blur(8px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 14px;
+      padding: 14px;
+      font-size: 0.92rem;
+      color: #d1dced;
+      line-height: 1.5;
+    }
+    .reel-summary-bullet {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      margin-bottom: 6px;
+    }
+    .reel-summary-bullet:last-child {
+      margin-bottom: 0;
+    }
+    .bullet-icon {
+      font-size: 0.85rem;
+      margin-top: 2px;
+    }
+
+    /* Sentiment Meter in Card */
+    .sentiment-meter-bar {
+      height: 6px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 3px;
+      overflow: hidden;
+      margin-top: 4px;
+      display: flex;
+    }
+    .sentiment-meter-fill {
+      height: 100%;
+      border-radius: 3px;
+    }
+
+    /* Bottom Tags */
+    .card-bottom {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .tags-row {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+    .tag-bubble {
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      color: var(--text-muted);
+      font-size: 0.75rem;
+      padding: 3px 8px;
+      border-radius: 12px;
+    }
+
+    /* Right Floating Action Rail (Instagram Style) */
+    .reel-actions-rail {
+      position: absolute;
+      right: 28px;
+      bottom: 40px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 18px;
+      z-index: 10;
+    }
+    @media (max-width: 600px) {
+      .reel-actions-rail {
+        right: 14px;
+        bottom: 24px;
+      }
+    }
+
+    .action-btn-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      cursor: pointer;
+    }
+    .action-circle-btn {
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      background: rgba(18, 25, 38, 0.85);
+      border: 1px solid var(--border-color);
+      backdrop-filter: blur(10px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.25rem;
+      color: #fff;
+      transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+    .action-circle-btn:hover {
+      transform: scale(1.15);
+      background: rgba(255, 255, 255, 0.15);
+      border-color: var(--accent-cyan);
+    }
+    .action-circle-btn.liked {
+      color: #ff3366;
+      border-color: #ff3366;
+      transform: scale(1.1);
+    }
+    .action-label {
+      font-size: 0.72rem;
+      font-weight: 700;
+      color: #fff;
+      text-shadow: 0 1px 4px rgba(0, 0, 0, 0.8);
+    }
+
+    /* Double Tap Big Heart Animation */
+    .big-heart {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%) scale(0);
+      font-size: 5rem;
+      color: #ff3366;
+      pointer-events: none;
+      opacity: 0;
+      z-index: 30;
+      text-shadow: 0 0 30px rgba(255, 51, 102, 0.8);
+    }
+    .big-heart.animate {
+      animation: heart-pop 0.8s ease-out forwards;
+    }
+    @keyframes heart-pop {
+      0% { transform: translate(-50%, -50%) scale(0); opacity: 0; }
+      50% { transform: translate(-50%, -50%) scale(1.3); opacity: 1; }
+      100% { transform: translate(-50%, -50%) scale(1); opacity: 0; }
+    }
+
+    /* Floating Navigation Arrows */
+    .nav-arrow-btn {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid var(--border-color);
+      color: #fff;
+      font-size: 1.1rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s ease;
+    }
+    .nav-arrow-btn:hover {
+      background: var(--accent-blue);
+      border-color: var(--accent-blue);
+    }
+
+    /* Empty state */
+    .empty-reels {
+      text-align: center;
+      padding: 40px;
+      color: var(--text-muted);
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Top Floating Header -->
+  <header class="reels-top-nav">
+    <div class="nav-left">
+      <a href="/" class="btn-back">
+        <span>← Terminal</span>
+      </a>
+      <div class="brand-reel">
+        FX<span>Pulse</span> Reels
+      </div>
+    </div>
+
+    <!-- Genre Dropdown Selector -->
+    <div class="genre-dropdown-wrap">
+      <select id="genreSelect" class="genre-select" onchange="onGenreChange(this.value)">
+        <option value="all">🔥 All Breaking News</option>
+        <optgroup label="── Currency Pairs ──">
+          <option value="EUR/USD">💶 EUR/USD (Euro)</option>
+          <option value="GBP/USD">💷 GBP/USD (Sterling)</option>
+          <option value="USD/JPY">💴 USD/JPY (Japanese Yen)</option>
+          <option value="AUD/USD">🇦🇺 AUD/USD (Australian Dollar)</option>
+          <option value="USD/CAD">🇨🇦 USD/CAD (Canadian Dollar)</option>
+          <option value="USD/CHF">🇨🇭 USD/CHF (Swiss Franc)</option>
+          <option value="NZD/USD">🇳🇿 NZD/USD (Kiwi)</option>
+          <option value="EUR/GBP">🇪🇺 EUR/GBP Cross</option>
+          <option value="GBP/JPY">🇬🇧 GBP/JPY Cross</option>
+          <option value="XAU/USD">🥇 Gold (XAU/USD)</option>
+          <option value="DXY">💵 US Dollar Index (DXY)</option>
+          <option value="WTI/USD">🛢️ Crude Oil (WTI)</option>
+        </optgroup>
+        <optgroup label="── Market Catalysts ──">
+          <option value="high_impact">⚡ High Impact & Breaking Only</option>
+          <option value="bullish">🟢 Bullish Momentum Stories</option>
+          <option value="bearish">🔴 Bearish Selloff Alerts</option>
+          <option value="central_banks">🏛️ Central Banks (Fed, ECB, BoE, BoJ)</option>
+          <option value="inflation">📊 Inflation, CPI & Interest Rates</option>
+          <option value="technicals">📈 Technical Analysis & Breakouts</option>
+        </optgroup>
+      </select>
+    </div>
+
+    <div class="nav-right">
+      <span class="reel-counter-badge" id="reelCounter">Reel 1 / --</span>
+    </div>
+  </header>
+
+  <!-- Vertical Snapping Reel Container -->
+  <main class="reels-container" id="reelsContainer">
+    <!-- Rendered dynamically by script -->
+    <div class="reel-slide">
+      <div style="text-align: center; color: var(--text-muted);">
+        <div style="font-size: 2.5rem; margin-bottom: 12px; animation: spin 1s linear infinite;">⏳</div>
+        <div>Loading Forex Reels...</div>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    let currentGenre = "all";
+    let reelsData = [];
+    let currentActiveIndex = 0;
+    const likedSet = new Set();
+
+    document.addEventListener("DOMContentLoaded", () => {
+      loadReels("all");
+      setupScrollListener();
+      setupKeyboardNav();
+    });
+
+    async function loadReels(genre) {
+      currentGenre = genre;
+      const container = document.getElementById("reelsContainer");
+      container.innerHTML = `
+        <div class="reel-slide">
+          <div style="text-align: center; color: var(--text-muted);">
+            <div style="font-size: 2.5rem; margin-bottom: 12px;">⚡</div>
+            <div style="font-weight: 700;">Loading ${genre.toUpperCase()} Reels...</div>
+          </div>
+        </div>`;
+
+      try {
+        const res = await fetch(`/api/reels?genre=${encodeURIComponent(genre)}&limit=50`);
+        const data = await res.json();
+        reelsData = data.reels || [];
+
+        if (reelsData.length === 0) {
+          container.innerHTML = `
+            <div class="reel-slide">
+              <div class="empty-reels">
+                <div style="font-size: 3rem; margin-bottom: 12px;">📭</div>
+                <h2>No reels found for "${genre}"</h2>
+                <p style="margin-top: 8px;">Try selecting another genre from the dropdown above.</p>
+              </div>
+            </div>`;
+          document.getElementById("reelCounter").textContent = "0 / 0";
+          return;
+        }
+
+        renderReels(reelsData);
+        container.scrollTop = 0;
+        updateCounter(0);
+      } catch (err) {
+        console.error("Failed to load reels:", err);
+        container.innerHTML = `
+          <div class="reel-slide">
+            <div class="empty-reels" style="color: var(--bearish);">
+              <h2>Failed to load news reels</h2>
+              <p>${err.message}</p>
+            </div>
+          </div>`;
+      }
+    }
+
+    function onGenreChange(genre) {
+      loadReels(genre);
+    }
+
+    function renderReels(articles) {
+      const container = document.getElementById("reelsContainer");
+      container.innerHTML = articles.map((art, idx) => {
+        const sentiment = art.sentiment || "NEUTRAL";
+        const impact = art.impact || "MEDIUM";
+        const primaryPair = art.primary_pair || "GENERAL";
+        const pubDate = formatTimeAgo(art.published_at);
+        const source = art.source || "Forex News";
+        const tags = Array.isArray(art.tags) ? art.tags : [];
+        const isLiked = likedSet.has(art.id || art.guid);
+
+        const sentimentClass = sentiment === "BULLISH" 
+          ? "sentiment-bullish" 
+          : sentiment === "BEARISH" 
+          ? "sentiment-bearish" 
+          : "sentiment-neutral";
+
+        const sentimentPill = sentiment === "BULLISH"
+          ? `<span class="reel-pill pill-bullish">🟢 Bullish</span>`
+          : sentiment === "BEARISH"
+          ? `<span class="reel-pill pill-bearish">🔴 Bearish</span>`
+          : `<span class="reel-pill pill-pair">⚪ Neutral</span>`;
+
+        const impactPill = impact === "HIGH"
+          ? `<span class="reel-pill pill-high-impact">⚡ High Impact</span>`
+          : "";
+
+        const summaryText = art.summary || art.content || art.title;
+        const bullets = parseBullets(summaryText);
+
+        const meterColor = sentiment === "BULLISH" ? "var(--bullish)" : sentiment === "BEARISH" ? "var(--bearish)" : "var(--accent-cyan)";
+        const meterWidth = sentiment === "BULLISH" ? "75%" : sentiment === "BEARISH" ? "75%" : "50%";
+
+        return `
+          <div class="reel-slide" data-index="${idx}">
+            <div class="reel-card ${sentimentClass}" ondblclick="onDoubleTap(event, '${art.id || art.guid}', ${idx})">
+              <!-- Top Story Progress Bar -->
+              <div class="story-progress-bar">
+                <div class="story-progress-fill" style="width: 100%;"></div>
+              </div>
+
+              <!-- Big Heart Animation -->
+              <div class="big-heart" id="bigHeart_${idx}">❤️</div>
+
+              <!-- Top Card Header -->
+              <div class="card-top">
+                <div class="source-row">
+                  <div class="source-profile">
+                    <div class="source-avatar">${source.charAt(0)}</div>
+                    <div class="source-info">
+                      <span class="source-name">${escapeHtml(source)} <span class="verified-badge">✔</span></span>
+                      <span class="source-time">${pubDate}</span>
+                    </div>
+                  </div>
+                  <div class="pill-badges">
+                    <span class="reel-pill pill-pair">${primaryPair}</span>
+                  </div>
+                </div>
+
+                <div class="pill-badges">
+                  ${sentimentPill}
+                  ${impactPill}
+                </div>
+              </div>
+
+              <!-- Middle Content -->
+              <div class="card-middle">
+                <h2 class="reel-title">${escapeHtml(art.title)}</h2>
+
+                <div class="reel-summary-box">
+                  ${bullets.map(b => `
+                    <div class="reel-summary-bullet">
+                      <span class="bullet-icon">⚡</span>
+                      <span>${b}</span>
+                    </div>
+                  `).join("")}
+
+                  <div style="margin-top: 10px;">
+                    <div style="display:flex; justify-content:space-between; font-size:0.72rem; color:var(--text-muted); font-weight:700;">
+                      <span>MARKET CATALYST BIAS</span>
+                      <span style="color:${meterColor}">${sentiment}</span>
+                    </div>
+                    <div class="sentiment-meter-bar">
+                      <div class="sentiment-meter-fill" style="width:${meterWidth}; background:${meterColor}"></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Bottom Tags -->
+              <div class="card-bottom">
+                <div class="tags-row">
+                  <span class="tag-bubble">#${primaryPair.replace("/", "")}</span>
+                  ${tags.slice(0, 3).map(t => `<span class="tag-bubble">#${t.replace(/\s+/g, "")}</span>`).join("")}
+                  <span class="tag-bubble">#FXPulse</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Floating Action Rail (Right Side) -->
+            <div class="reel-actions-rail">
+              <!-- Up Arrow -->
+              <button class="nav-arrow-btn" onclick="scrollToReel(${idx - 1})" title="Previous Reel (Up)">▲</button>
+
+              <!-- Like -->
+              <div class="action-btn-item" onclick="toggleLike('${art.id || art.guid}', ${idx})">
+                <div class="action-circle-btn ${isLiked ? 'liked' : ''}" id="likeBtn_${idx}">
+                  ${isLiked ? '❤️' : '🤍'}
+                </div>
+                <span class="action-label" id="likeCount_${idx}">${isLiked ? '1' : 'Like'}</span>
+              </div>
+
+              <!-- Share Link -->
+              <div class="action-btn-item" onclick="shareReel('${escapeHtml(art.title)}', '${escapeHtml(art.url)}')">
+                <div class="action-circle-btn">🔗</div>
+                <span class="action-label">Share</span>
+              </div>
+
+              <!-- Full Story -->
+              <a href="${escapeHtml(art.url)}" target="_blank" rel="noopener noreferrer" class="action-btn-item" style="text-decoration:none;">
+                <div class="action-circle-btn" style="color:var(--accent-cyan);">↗</div>
+                <span class="action-label">Story</span>
+              </a>
+
+              <!-- Down Arrow -->
+              <button class="nav-arrow-btn" onclick="scrollToReel(${idx + 1})" title="Next Reel (Down)">▼</button>
+            </div>
+          </div>
+        `;
+      }).join("");
+    }
+
+    function parseBullets(text) {
+      if (!text) return ["No further summary available."];
+      // Split sentences cleanly
+      const sents = text.split(/(?<=[.!?])\s+/).filter(s => s.trim().length > 10);
+      if (sents.length <= 1) {
+        return [text];
+      }
+      return sents.slice(0, 3);
+    }
+
+    function setupScrollListener() {
+      const container = document.getElementById("reelsContainer");
+      let scrollTimeout = null;
+
+      container.addEventListener("scroll", () => {
+        clearTimeout(scrollTimeout);
+        scrollTimeout = setTimeout(() => {
+          const index = Math.round(container.scrollTop / window.innerHeight);
+          updateCounter(index);
+        }, 80);
+      });
+    }
+
+    function updateCounter(index) {
+      currentActiveIndex = Math.max(0, Math.min(index, reelsData.length - 1));
+      const counter = document.getElementById("reelCounter");
+      if (counter && reelsData.length > 0) {
+        counter.textContent = `Reel ${currentActiveIndex + 1} / ${reelsData.length}`;
+      }
+    }
+
+    function scrollToReel(index) {
+      if (index < 0 || index >= reelsData.length) return;
+      const container = document.getElementById("reelsContainer");
+      container.scrollTo({
+        top: index * window.innerHeight,
+        behavior: "smooth"
+      });
+    }
+
+    function setupKeyboardNav() {
+      document.addEventListener("keydown", (e) => {
+        if (e.key === "ArrowDown" || e.key === " " || e.key === "j") {
+          e.preventDefault();
+          scrollToReel(currentActiveIndex + 1);
+        } else if (e.key === "ArrowUp" || e.key === "k") {
+          e.preventDefault();
+          scrollToReel(currentActiveIndex - 1);
+        }
+      });
+    }
+
+    function toggleLike(id, idx) {
+      const btn = document.getElementById(`likeBtn_${idx}`);
+      const countEl = document.getElementById(`likeCount_${idx}`);
+      if (likedSet.has(id)) {
+        likedSet.delete(id);
+        btn.innerHTML = "🤍";
+        btn.classList.remove("liked");
+        countEl.textContent = "Like";
+      } else {
+        likedSet.add(id);
+        btn.innerHTML = "❤️";
+        btn.classList.add("liked");
+        countEl.textContent = "1";
+        triggerHeartAnim(idx);
+      }
+    }
+
+    function onDoubleTap(event, id, idx) {
+      if (!likedSet.has(id)) {
+        toggleLike(id, idx);
+      } else {
+        triggerHeartAnim(idx);
+      }
+    }
+
+    function triggerHeartAnim(idx) {
+      const heart = document.getElementById(`bigHeart_${idx}`);
+      if (!heart) return;
+      heart.classList.remove("animate");
+      void heart.offsetWidth; // Force reflow
+      heart.classList.add("animate");
+    }
+
+    function shareReel(title, url) {
+      if (navigator.clipboard) {
+        navigator.clipboard.writeText(`${title} - ${url}`).then(() => {
+          alert("Link copied to clipboard!");
+        });
+      } else {
+        alert(url);
+      }
+    }
+
+    function formatTimeAgo(isoString) {
+      if (!isoString) return "just now";
+      try {
+        const date = new Date(isoString);
+        const seconds = Math.floor((Date.now() - date.getTime()) / 1000);
+        if (seconds < 60) return "just now";
+        const minutes = Math.floor(seconds / 60);
+        if (minutes < 60) return `${minutes}m ago`;
+        const hours = Math.floor(minutes / 60);
+        if (hours < 24) return `${hours}h ago`;
+        const days = Math.floor(hours / 24);
+        return `${days}d ago`;
+      } catch {
+        return isoString;
+      }
+    }
+
+    function escapeHtml(str) {
+      if (!str) return "";
+      return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+    }
+  </script>
+</body>
+</html>

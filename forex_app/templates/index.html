@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FXPulse — Forex News & Search Engine</title>
+  <link rel="stylesheet" href="/static/css/style.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚡</text></svg>">
+</head>
+<body>
+
+  <!-- Live Market Ticker Ribbon -->
+  <div class="ticker-wrap">
+    <div class="ticker-items" id="tickerItems">
+      <div class="ticker-item up"><span class="sym">EUR/USD</span> <span class="val">1.0842</span> <span class="chg">+0.18%</span></div>
+      <div class="ticker-item up"><span class="sym">GBP/USD</span> <span class="val">1.2584</span> <span class="chg">+0.32%</span></div>
+      <div class="ticker-item down"><span class="sym">USD/JPY</span> <span class="val">154.65</span> <span class="chg">-0.24%</span></div>
+      <div class="ticker-item up"><span class="sym">AUD/USD</span> <span class="val">0.6518</span> <span class="chg">+0.15%</span></div>
+      <div class="ticker-item up"><span class="sym">USD/CAD</span> <span class="val">1.3745</span> <span class="chg">+0.11%</span></div>
+      <div class="ticker-item down"><span class="sym">USD/CHF</span> <span class="val">0.9120</span> <span class="chg">-0.16%</span></div>
+      <div class="ticker-item up"><span class="sym">XAU/USD</span> <span class="val">$2,388.50</span> <span class="chg">+1.42%</span></div>
+      <div class="ticker-item down"><span class="sym">DXY</span> <span class="val">105.85</span> <span class="chg">-0.10%</span></div>
+      <div class="ticker-item up"><span class="sym">GBP/JPY</span> <span class="val">194.62</span> <span class="chg">+0.08%</span></div>
+      <!-- Duplicate for infinite seamless scroll -->
+      <div class="ticker-item up"><span class="sym">EUR/USD</span> <span class="val">1.0842</span> <span class="chg">+0.18%</span></div>
+      <div class="ticker-item up"><span class="sym">GBP/USD</span> <span class="val">1.2584</span> <span class="chg">+0.32%</span></div>
+      <div class="ticker-item down"><span class="sym">USD/JPY</span> <span class="val">154.65</span> <span class="chg">-0.24%</span></div>
+      <div class="ticker-item up"><span class="sym">AUD/USD</span> <span class="val">0.6518</span> <span class="chg">+0.15%</span></div>
+      <div class="ticker-item up"><span class="sym">USD/CAD</span> <span class="val">1.3745</span> <span class="chg">+0.11%</span></div>
+      <div class="ticker-item down"><span class="sym">USD/CHF</span> <span class="val">0.9120</span> <span class="chg">-0.16%</span></div>
+      <div class="ticker-item up"><span class="sym">XAU/USD</span> <span class="val">$2,388.50</span> <span class="chg">+1.42%</span></div>
+      <div class="ticker-item down"><span class="sym">DXY</span> <span class="val">105.85</span> <span class="chg">-0.10%</span></div>
+      <div class="ticker-item up"><span class="sym">GBP/JPY</span> <span class="val">194.62</span> <span class="chg">+0.08%</span></div>
+    </div>
+  </div>
+
+  <!-- Header -->
+  <header>
+    <div class="header-container">
+      <a href="/" class="brand">
+        <div class="brand-icon">⚡</div>
+        <div>
+          <div class="brand-title">FX<span>Pulse</span> Terminal</div>
+          <div class="brand-subtitle">Forex News Intelligence & BM25 Search Engine</div>
+        </div>
+      </a>
+
+      <div class="header-actions">
+        <!-- Redis / Memory Engine Badge -->
+        <div class="cache-badge" id="headerCacheBadge" onclick="openRedisModal()" title="Click to view Redis & Cache Details">
+          <span class="status-dot" id="cacheStatusDot"></span>
+          <span>Loading Cache Engine...</span>
+        </div>
+
+        <!-- Refresh Live News Button -->
+        <button class="btn btn-primary" id="refreshBtn" onclick="triggerLiveRefresh()" title="Fetch latest news from RSS feeds and central banks">
+          <span id="refreshIcon">🔄</span>
+          <span>Refresh Feeds</span>
+          <span style="font-size:0.75rem; background:rgba(255,255,255,0.2); padding:1px 6px; border-radius:10px;" id="refreshTimer">120s</span>
+        </button>
+
+        <!-- Instagram Reels Mode Button -->
+        <a href="/reels" class="btn" style="background: linear-gradient(135deg, #ff007f 0%, #7928ca 100%); color: #fff; box-shadow: 0 4px 14px rgba(255, 0, 127, 0.35); font-weight: 700;" title="Switch to Instagram Reels Vertical Story Cards Mode">
+          <span>📱 FX Reels</span>
+        </a>
+
+        <a href="/docs" target="_blank" class="btn btn-outline" title="Open FastAPI Interactive Swagger Documentation">
+          API Docs
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Container -->
+  <main class="main-layout">
+
+    <!-- Search & Filter Card -->
+    <section class="search-section">
+      <!-- Search Input -->
+      <div class="search-box-wrap">
+        <span class="search-icon">🔍</span>
+        <input 
+          type="text" 
+          id="searchInput" 
+          class="search-input" 
+          placeholder="Search entire Forex database (e.g., 'Fed interest rate cuts', 'Powell speech', 'Lagarde', 'NFP blowout')... [Press /]"
+          autocomplete="off"
+        >
+        <button id="searchClear" class="search-clear" title="Clear search">×</button>
+      </div>
+
+      <!-- Quick Search Suggestions -->
+      <div class="quick-queries">
+        <span>Quick Topics:</span>
+        <button class="query-tag" onclick="setQuickSearch('Interest Rate Cuts')">Interest Rate Cuts</button>
+        <button class="query-tag" onclick="setQuickSearch('Fed Powell')">Fed Powell</button>
+        <button class="query-tag" onclick="setQuickSearch('ECB Lagarde')">ECB Lagarde</button>
+        <button class="query-tag" onclick="setQuickSearch('Non-Farm Payrolls NFP')">Non-Farm Payrolls</button>
+        <button class="query-tag" onclick="setQuickSearch('Japan Yen Intervention')">Yen Intervention</button>
+        <button class="query-tag" onclick="setQuickSearch('Gold Record Highs')">Gold Record Highs</button>
+        <button class="query-tag" onclick="setQuickSearch('Inflation CPI')">Inflation CPI</button>
+      </div>
+
+      <!-- Currency Pairs Tabs -->
+      <div class="pair-tabs-wrap" id="pairTabs">
+        <!-- Rendered dynamically by app.js -->
+        <button class="pair-tab active">ALL <span class="count">--</span></button>
+      </div>
+
+      <!-- Filter Controls Row -->
+      <div class="filter-row">
+        <div class="filter-group">
+          <span class="filter-label">Sort By:</span>
+          <select id="sortFilter" class="select-styled">
+            <option value="published_at">Newest First</option>
+            <option value="relevance">Most Relevant (BM25 Engine)</option>
+            <option value="sentiment_score">Strongest Sentiment</option>
+          </select>
+        </div>
+
+        <div class="filter-group">
+          <span class="filter-label">Impact:</span>
+          <select id="impactFilter" class="select-styled">
+            <option value="ALL">All Impacts</option>
+            <option value="HIGH">⚡ High Impact Only</option>
+            <option value="MEDIUM">Medium Impact</option>
+            <option value="LOW">Low Impact</option>
+          </select>
+        </div>
+
+        <div class="filter-group">
+          <span class="filter-label">Sentiment:</span>
+          <select id="sentimentFilter" class="select-styled">
+            <option value="ALL">All Sentiments</option>
+            <option value="BULLISH">🟢 Bullish Only</option>
+            <option value="BEARISH">🔴 Bearish Only</option>
+            <option value="NEUTRAL">⚪ Neutral</option>
+          </select>
+        </div>
+      </div>
+    </section>
+
+    <!-- Main Grid: Feed + Sidebar -->
+    <div class="content-grid">
+      <!-- News Articles Feed -->
+      <section>
+        <div class="feed-header">
+          <div class="feed-title">
+            <span>Market Intelligence Stream</span>
+            <span class="feed-count" id="feedCount">Loading articles...</span>
+          </div>
+          <div class="search-meta" id="searchMeta"></div>
+        </div>
+
+        <div class="articles-list" id="articlesList">
+          <!-- Populated dynamically by app.js -->
+        </div>
+      </section>
+
+      <!-- Right Sidebar -->
+      <aside class="sidebar">
+        <!-- Redis & Storage Engine Card -->
+        <div class="sidebar-card">
+          <div class="sidebar-title">
+            <span>Redis & Cache Engine</span>
+            <span style="font-size:1.1rem; cursor:pointer;" onclick="openRedisModal()" title="Help & Details">ℹ️</span>
+          </div>
+          <div class="redis-status-box">
+            <div class="redis-engine-row">
+              <span class="redis-engine-name" id="cacheStatusTitle">In-Memory Engine</span>
+              <span class="badge badge-bullish" style="font-size:0.68rem;">Active</span>
+            </div>
+            <p class="redis-details" id="cacheStatusDetails">
+              Operating on built-in fast memory store with SQLite persistent layer.
+            </p>
+          </div>
+          <button class="btn btn-outline" style="width:100%; font-size:0.8rem;" onclick="openRedisModal()">
+            Redis Guide & Configuration
+          </button>
+        </div>
+
+        <!-- Sentiment Meter -->
+        <div class="sidebar-card">
+          <div class="sidebar-title">
+            <span>Market Sentiment Bias</span>
+            <span style="font-size:0.8rem; color:var(--text-muted);">Current Corpus</span>
+          </div>
+          <div class="sentiment-bar-wrap">
+            <div class="sentiment-labels">
+              <span style="color:var(--bullish-green);" id="sentimentBullText">50% Bullish</span>
+              <span style="color:var(--bearish-red);" id="sentimentBearText">50% Bearish</span>
+            </div>
+            <div class="sentiment-meter">
+              <div class="sentiment-fill-bull" id="sentimentBullFill" style="width: 50%;"></div>
+              <div class="sentiment-fill-bear" id="sentimentBearFill" style="width: 50%;"></div>
+            </div>
+          </div>
+          <p style="font-size:0.75rem; color:var(--text-muted); line-height:1.4;">
+            Analyzed automatically using financial lexicon scoring across headlines and central bank commentary.
+          </p>
+        </div>
+
+        <!-- Currency Pairs Distribution -->
+        <div class="sidebar-card">
+          <div class="sidebar-title">
+            <span>Top Tracked Pairs</span>
+            <span style="font-size:0.8rem; color:var(--text-muted);">Volume</span>
+          </div>
+          <div id="sidebarPairList">
+            <!-- Populated dynamically -->
+          </div>
+        </div>
+
+        <!-- BM25 Search Engine Card -->
+        <div class="sidebar-card">
+          <div class="sidebar-title">
+            <span>BM25 Search Engine</span>
+            <span class="badge badge-bm25">Active</span>
+          </div>
+          <p style="font-size:0.82rem; color:#d1d9e6; margin-bottom:8px;">
+            <strong id="indexedDocCount">--</strong> articles indexed into the in-memory inverted index.
+          </p>
+          <div style="font-size:0.75rem; color:var(--text-muted); line-height:1.5;">
+            • <strong>Currency Pairs Match:</strong> 3.0x Boost<br>
+            • <strong>Headline Title:</strong> 2.5x Boost<br>
+            • <strong>Summary & Body:</strong> 1.2x Boost<br>
+            • <strong>Scoring:</strong> Okapi BM25 ranked retrieval
+          </div>
+        </div>
+      </aside>
+    </div>
+
+  </main>
+
+  <!-- Redis Info & Setup Modal -->
+  <div class="modal-overlay" id="redisModal" onclick="if(event.target === this) closeRedisModal()">
+    <div class="modal-card">
+      <div class="modal-header">
+        <div class="modal-title">⚡ Redis & Caching Engine Guide</div>
+        <button class="modal-close" onclick="closeRedisModal()">×</button>
+      </div>
+
+      <div style="font-size:0.9rem; color:#d1d9e6; line-height:1.6; display:flex; flex-direction:column; gap:16px;">
+        <div style="background-color:rgba(0, 210, 255, 0.1); border:1px solid rgba(0, 210, 255, 0.3); border-radius:var(--radius-sm); padding:14px;">
+          <h4 style="color:var(--accent-cyan); font-weight:700; margin-bottom:4px;">Good News: Zero Redis Setup Required!</h4>
+          <p style="font-size:0.85rem; color:#c7d6eb;">
+            You mentioned you don't know how to code, install, or use Redis. We built a <strong>seamless dual-layer architecture</strong>: 
+            the application includes a <strong>built-in in-memory cache and persistent SQLite database</strong> that works 100% out of the box right now without you installing anything!
+          </p>
+        </div>
+
+        <div>
+          <h4 style="font-weight:700; margin-bottom:6px; color:#fff;">What is Redis and Why do Financial Apps Use It?</h4>
+          <p style="font-size:0.85rem; color:var(--text-muted);">
+            Redis is an ultra-fast in-memory data store. In financial markets, news articles and quotes are kept in memory so searches and dashboard updates happen in <strong>less than 1 millisecond</strong>. Old news can automatically expire using TTL (Time To Live).
+          </p>
+        </div>
+
+        <div>
+          <h4 style="font-weight:700; margin-bottom:6px; color:#fff;">Want to Try Real Redis? Here is How to Install it in 1 Command:</h4>
+          <p style="font-size:0.85rem; color:var(--text-muted); margin-bottom:6px;">
+            On macOS (using Homebrew):
+          </p>
+          <div class="code-box">
+            <code>brew install redis && brew services start redis</code>
+            <button class="copy-btn" onclick="copyCode(this, 'brew install redis && brew services start redis')">Copy</button>
+          </div>
+
+          <p style="font-size:0.85rem; color:var(--text-muted); margin-bottom:6px; margin-top:10px;">
+            Or using Docker (if you have Docker Desktop):
+          </p>
+          <div class="code-box">
+            <code>docker run -d -p 6379:6379 --name redis redis:alpine</code>
+            <button class="copy-btn" onclick="copyCode(this, 'docker run -d -p 6379:6379 --name redis redis:alpine')">Copy</button>
+          </div>
+
+          <p style="font-size:0.85rem; color:var(--text-muted); margin-top:8px;">
+            And install the Python Redis client:
+          </p>
+          <div class="code-box">
+            <code>python3 -m pip install redis</code>
+            <button class="copy-btn" onclick="copyCode(this, 'python3 -m pip install redis')">Copy</button>
+          </div>
+        </div>
+
+        <!-- Test Connection Section -->
+        <div style="border-top:1px solid var(--border-color); padding-top:14px;">
+          <h4 style="font-weight:700; margin-bottom:8px; color:#fff;">Test Redis Connection</h4>
+          <div style="display:flex; gap:10px; margin-bottom:8px;">
+            <input type="text" id="redisTestUrl" class="search-input" style="padding:8px 12px; font-size:0.85rem;" value="redis://localhost:6379/0" placeholder="redis://localhost:6379/0">
+            <button class="btn btn-primary" onclick="testRedisConnection()" style="white-space:nowrap;">Test Ping</button>
+          </div>
+          <div id="redisTestResult" style="font-size:0.82rem; font-family:var(--font-mono);"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification Container -->
+  <div class="toast-container" id="toastContainer"></div>
+
+  <script src="/static/js/app.js"></script>
+</body>
+</html>
