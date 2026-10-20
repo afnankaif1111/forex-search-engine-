@@ -21,7 +21,7 @@ from ..nlp.classifier import (
 )
 from ..storage.cache import cache
 from ..storage.database import db
-from .rss_feeds import fetch_rss_feed
+from .async_fetch import FeedFetcher
 
 logger = logging.getLogger(__name__)
 
@@ -31,6 +31,7 @@ class NewsService:
 
     def __init__(self, refresh_interval: int = DEFAULT_REFRESH_INTERVAL):
         self.refresh_interval = refresh_interval
+        self.fetcher = FeedFetcher(timeout=4.0)
         self.is_running = False
         self._worker_thread: threading.Thread | None = None
         self._stop_event = threading.Event()
@@ -120,14 +121,9 @@ class NewsService:
         }
 
         # Store in SQLite
-        inserted = db.insert_article(article_record)
+        inserted = db.insert_article(article_record)  # sets article_record["id"]
         if inserted:
-            # Query back inserted record to get assigned SQLite autoincrement ID
-            saved = db.get_articles(limit=1, ids=None, sort_by="id", ascending=False)
-            if saved:
-                article_record["id"] = saved[0]["id"]
-                # Add to BM25 search engine
-                search_engine.add_document(article_record)
+            search_engine.add_document(article_record)
 
         return inserted, article_record
 
@@ -137,42 +133,39 @@ class NewsService:
         new_inserted = 0
         feed_results = []
 
-        for feed in RSS_FEEDS:
-            name = feed["name"]
-            url = feed["url"]
-            try:
-                items = fetch_rss_feed(name, url, timeout=6.0)
-                feed_new = 0
-                for item in items:
-                    total_fetched += 1
-                    inserted, _ = self._process_and_store(item)
-                    if inserted:
-                        feed_new += 1
-                        new_inserted += 1
+        t0 = time.perf_counter()
+        for res in self.fetcher.fetch_all(RSS_FEEDS):
+            name = res["feed"]
+            items = res["items"]
+            feed_new = 0
+            for item in items:
+                total_fetched += 1
+                inserted, _ = self._process_and_store(item)
+                if inserted:
+                    feed_new += 1
+                    new_inserted += 1
 
-                db.log_refresh(name, len(items), feed_new, "SUCCESS")
-                feed_results.append({
-                    "feed": name,
-                    "fetched": len(items),
-                    "new": feed_new,
-                    "status": "ok",
-                })
-            except Exception as e:
-                logger.warning("Feed %s failed: %s", name, e)
-                db.log_refresh(name, 0, 0, "FAILED", str(e))
-                feed_results.append({
-                    "feed": name,
-                    "fetched": 0,
-                    "new": 0,
-                    "status": "error",
-                    "error": str(e),
-                })
+            if res["status"] == "ok":
+                status = "NOT_MODIFIED" if res["not_modified"] else "SUCCESS"
+                db.log_refresh(name, len(items), feed_new, status)
+            else:
+                logger.warning("Feed %s failed: %s", name, res["error"])
+                db.log_refresh(name, 0, 0, "FAILED", res["error"])
+            feed_results.append({
+                "feed": name,
+                "fetched": len(items),
+                "new": feed_new,
+                "status": "not_modified" if res["not_modified"] else res["status"],
+                "elapsed_ms": res["elapsed_ms"],
+                **({"error": res["error"]} if "error" in res else {}),
+            })
 
         self.last_refresh_time = time.time()
         self.last_refresh_stats = {
             "timestamp": datetime.utcnow().isoformat(),
             "total_fetched": total_fetched,
             "new_inserted": new_inserted,
+            "elapsed_ms": round((time.perf_counter() - t0) * 1000, 1),
             "feeds": feed_results,
         }
 

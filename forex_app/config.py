@@ -60,15 +60,17 @@ RSS_FEEDS = [
     },
     {
         "name": "Yahoo Finance Currencies",
-        "url": "https://finance.yahoo.com/news/rssindex",
+        "url": "https://feeds.finance.yahoo.com/rss/2.0/headline?s=EURUSD=X,GBPUSD=X,USDJPY=X,AUDUSD=X,USDCAD=X,GC=F&region=US&lang=en-US",
+        # Yahoo rate-limits (429) browser User-Agents that lack browser headers
+        "headers": {"User-Agent": "Mozilla/5.0"},
         "category": "forex",
         "reliability": 0.90,
     },
     {
-        "name": "CNBC Forex & Economy",
-        "url": "https://search.cnbc.com/rs/search/view.html?partnerId=2000&keywords=forex&sort=date&output=rss",
-        "category": "economy",
-        "reliability": 0.90,
+        "name": "FXEmpire News",
+        "url": "https://www.fxempire.com/api/v1/en/articles/rss/news",
+        "category": "forex",
+        "reliability": 0.85,
     },
     {
         "name": "MarketWatch Realtime",
@@ -87,6 +89,44 @@ RSS_FEEDS = [
         "url": "https://www.bankofengland.co.uk/rss/news",
         "category": "central_bank",
         "reliability": 0.95,
+    },
+    # Crypto
+    {
+        "name": "CoinDesk",
+        "url": "https://www.coindesk.com/arc/outboundfeeds/rss/",
+        "category": "crypto",
+        "reliability": 0.90,
+    },
+    {
+        "name": "Cointelegraph",
+        "url": "https://cointelegraph.com/rss",
+        "category": "crypto",
+        "reliability": 0.80,
+    },
+    {
+        "name": "Decrypt",
+        "url": "https://decrypt.co/feed",
+        "category": "crypto",
+        "reliability": 0.80,
+    },
+    # Stocks
+    {
+        "name": "Nasdaq Stocks",
+        "url": "https://www.nasdaq.com/feed/rssoutbound?category=Stocks",
+        "category": "stocks",
+        "reliability": 0.85,
+    },
+    {
+        "name": "CNBC Top News",
+        "url": "https://www.cnbc.com/id/100003114/device/rss/rss.html",
+        "category": "markets",
+        "reliability": 0.90,
+    },
+    {
+        "name": "CNBC Investing",
+        "url": "https://www.cnbc.com/id/15839069/device/rss/rss.html",
+        "category": "stocks",
+        "reliability": 0.90,
     },
 ]
 

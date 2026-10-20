@@ -85,7 +85,10 @@ class DatabaseManager:
             conn.close()
 
     def insert_article(self, article: dict[str, Any]) -> bool:
-        """Insert a single article. Returns True if inserted, False if duplicate."""
+        """Insert a single article. Returns True if inserted, False if duplicate.
+
+        On insert, the new row id is written back into ``article["id"]``.
+        """
         now_str = datetime.utcnow().isoformat()
         guid = article.get("guid") or article.get("url") or article.get("title", "")
         pairs = article.get("currency_pairs", [])
@@ -125,6 +128,8 @@ class DatabaseManager:
                 ))
                 inserted = cursor.rowcount > 0
                 conn.commit()
+                if inserted:
+                    article["id"] = cursor.lastrowid
                 return inserted
             except Exception as e:
                 logger.error("Error inserting article: %s", e)

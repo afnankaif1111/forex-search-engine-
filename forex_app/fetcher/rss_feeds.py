@@ -53,7 +53,6 @@ def parse_date(date_str: str) -> str:
 
 def fetch_rss_feed(feed_name: str, feed_url: str, timeout: float = 8.0) -> list[dict[str, Any]]:
     """Download and parse an RSS or Atom feed into standard article dictionaries."""
-    articles = []
 
     # Permissive SSL context to avoid certificate failures on government/central bank feeds
     ctx = ssl.create_default_context()
@@ -71,6 +70,12 @@ def fetch_rss_feed(feed_name: str, feed_url: str, timeout: float = 8.0) -> list[
         logger.warning("Failed to fetch RSS feed %s from %s: %s", feed_name, feed_url, e)
         return []
 
+    return parse_feed(feed_name, content)
+
+
+def parse_feed(feed_name: str, content: bytes) -> list[dict[str, Any]]:
+    """Parse raw RSS or Atom XML bytes into standard article dictionaries."""
+    articles = []
     try:
         root = ET.fromstring(content)
     except Exception as e:
