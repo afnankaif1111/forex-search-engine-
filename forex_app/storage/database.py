@@ -71,8 +71,47 @@ class DatabaseManager:
             );
             """)
 
+            # 1-minute OHLC bars from the live price hub (t = bar start, epoch ms)
+            cursor.execute("""
+            CREATE TABLE IF NOT EXISTS price_bars (
+                symbol TEXT NOT NULL,
+                t INTEGER NOT NULL,
+                o REAL NOT NULL,
+                h REAL NOT NULL,
+                l REAL NOT NULL,
+                c REAL NOT NULL,
+                n INTEGER NOT NULL,
+                PRIMARY KEY (symbol, t)
+            ) WITHOUT ROWID;
+            """)
+
             conn.commit()
             conn.close()
+
+    def insert_bars(self, rows: list[tuple]) -> None:
+        """Upsert (symbol, t, o, h, l, c, n) bar rows."""
+        if not rows:
+            return
+        with self._lock:
+            conn = self._get_connection()
+            try:
+                conn.executemany(
+                    "INSERT OR REPLACE INTO price_bars (symbol, t, o, h, l, c, n) "
+                    "VALUES (?, ?, ?, ?, ?, ?, ?)", rows)
+                conn.commit()
+            finally:
+                conn.close()
+
+    def get_bars(self, symbol: str, limit: int = 240) -> list[dict[str, Any]]:
+        """Most recent bars for a symbol, oldest first."""
+        conn = self._get_connection()
+        try:
+            rows = conn.execute(
+                "SELECT t, o, h, l, c, n FROM price_bars WHERE symbol = ? "
+                "ORDER BY t DESC LIMIT ?", (symbol, limit)).fetchall()
+        finally:
+            conn.close()
+        return [dict(r) for r in reversed(rows)]
 
     def clear_all(self) -> None:
         """Purge all articles and refresh logs from database."""

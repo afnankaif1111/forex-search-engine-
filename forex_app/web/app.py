@@ -8,7 +8,7 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Any, Optional
 
-from fastapi import FastAPI, HTTPException, Query, Request
+from fastapi import FastAPI, HTTPException, Query, Request, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
@@ -17,6 +17,8 @@ from pydantic import BaseModel
 from ..config import ALL_PAIRS, MAJOR_PAIRS, RSS_FEEDS
 from ..engine.search import search_engine
 from ..fetcher.news_service import news_service
+from ..prices.assets import ASSETS, normalize_symbol
+from ..prices.hub import PriceHub
 from ..storage.cache import cache
 from ..storage.database import db
 
@@ -26,15 +28,29 @@ TEMPLATES_DIR = Path(__file__).resolve().parent.parent / "templates"
 STATIC_DIR = Path(__file__).resolve().parent / "static"
 
 
+price_hub = PriceHub(cache=cache, db=db)
+
+
+def _parse_symbols(raw: Optional[str]) -> Optional[set[str]]:
+    """'eurusd,BTC,aapl' -> {'EUR/USD','BTC/USD','AAPL'}; empty -> None (all)."""
+    if not raw:
+        return None
+    out = {normalize_symbol(s) for s in raw.split(",") if s.strip()}
+    out.discard(None)
+    return out
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup: Initialize DB, seed if empty, build BM25 search index, start background worker
     logger.info("Initializing Forex News Application...")
-    news_service.initialize()
+    price_hub.start()  # live prices first: they don't wait on the news fetch
+    await asyncio.to_thread(news_service.initialize)
     news_service.start_background_worker()
     yield
     # Shutdown
     news_service.stop_background_worker()
+    await price_hub.stop()
     logger.info("Forex News Application shutdown complete.")
 
 
@@ -241,6 +257,7 @@ async def get_stats():
         "engine_docs_indexed": search_engine.n_docs,
         "feeds_configured": len(RSS_FEEDS),
         "refresh_interval_seconds": news_service.refresh_interval,
+        "prices": price_hub.status(),
     }
 
 
@@ -297,6 +314,84 @@ async def update_settings(payload: SettingsPayload):
         "status": "updated",
         "refresh_interval": news_service.refresh_interval,
     }
+
+
+# ---------------- Live Prices ----------------
+
+@app.get("/api/assets")
+async def list_assets():
+    """Every tracked asset with its class and latest price (if any)."""
+    return {"assets": [{**{k: a[k] for k in ("symbol", "class")},
+                        "name": a.get("name", a["symbol"]),
+                        "quote": price_hub.last.get(a["symbol"])} for a in ASSETS]}
+
+
+@app.get("/api/quote")
+async def get_quote(symbol: str = Query(..., description="e.g. EUR/USD, eurusd, BTC, AAPL")):
+    sym = normalize_symbol(symbol)
+    if sym is None:
+        raise HTTPException(status_code=404, detail=f"Unknown symbol: {symbol}")
+    quote = price_hub.last.get(sym) or cache.get_json(f"px:{sym}")
+    if quote is None:
+        raise HTTPException(status_code=503, detail=f"No price yet for {sym}")
+    return quote
+
+
+@app.get("/api/quotes")
+async def get_quotes(symbols: Optional[str] = Query(None, description="comma-separated; default all")):
+    return {"quotes": price_hub.snapshot(_parse_symbols(symbols))}
+
+
+@app.get("/api/bars")
+async def get_bars(symbol: str, limit: int = Query(240, ge=1, le=5000)):
+    """1-minute OHLC bars: in-memory for the live window, SQLite beyond it."""
+    sym = normalize_symbol(symbol)
+    if sym is None:
+        raise HTTPException(status_code=404, detail=f"Unknown symbol: {symbol}")
+    bars = price_hub.get_bars(sym)
+    if len(bars) < limit:
+        older = await asyncio.to_thread(db.get_bars, sym, limit)
+        first = bars[0]["t"] if bars else float("inf")
+        bars = [b for b in older if b["t"] < first] + bars
+    return {"symbol": sym, "interval": "1m", "bars": bars[-limit:]}
+
+
+@app.get("/api/prices/status")
+async def prices_status():
+    return price_hub.status()
+
+
+@app.websocket("/ws/prices")
+async def ws_prices(websocket: WebSocket, symbols: Optional[str] = None):
+    """Push live price batches. Optional ?symbols=EURUSD,BTC; the client may
+    later send {"subscribe": ["AAPL", ...]} (empty list = all) to change it."""
+    await websocket.accept()
+    want = _parse_symbols(symbols)
+    q = price_hub.subscribe(want)
+
+    async def reader():
+        nonlocal want
+        while True:
+            msg = await websocket.receive_json()
+            if isinstance(msg, dict) and "subscribe" in msg:
+                want = _parse_symbols(",".join(msg["subscribe"] or []))
+                price_hub.set_symbols(q, want)
+                await websocket.send_json({"type": "snapshot", "quotes": price_hub.snapshot(want)})
+
+    read_task = asyncio.create_task(reader())
+    try:
+        await websocket.send_json({"type": "snapshot", "quotes": price_hub.snapshot(want)})
+        while not read_task.done():
+            try:
+                batch = await asyncio.wait_for(q.get(), timeout=20)
+                await websocket.send_json({"type": "ticks", "quotes": batch})
+            except asyncio.TimeoutError:
+                await websocket.send_json({"type": "ping"})
+    except (WebSocketDisconnect, RuntimeError):
+        pass
+    finally:
+        read_task.cancel()
+        price_hub.unsubscribe(q)
 
 
 # ---------------- Server-Sent Events (SSE) ----------------
