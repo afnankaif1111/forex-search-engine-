@@ -75,6 +75,10 @@ body {
 .ticker-item .val { color: var(--text-muted); }
 .ticker-item.up .chg { color: var(--bullish-green); }
 .ticker-item.down .chg { color: var(--bearish-red); }
+.ticker-item .val.tick-up { animation: tick-flash-up 0.6s ease-out; }
+.ticker-item .val.tick-down { animation: tick-flash-down 0.6s ease-out; }
+@keyframes tick-flash-up { from { color: var(--bullish-green); } to { color: var(--text-muted); } }
+@keyframes tick-flash-down { from { color: var(--bearish-red); } to { color: var(--text-muted); } }
 
 /* ---------------- Header ---------------- */
 header {

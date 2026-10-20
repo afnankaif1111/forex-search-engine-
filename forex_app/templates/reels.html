@@ -2,845 +2,532 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>FXPulse Reels — Forex News in Vertical Reel Stream</title>
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📱</text></svg>">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>FXPulse Reels — Markets news, one story at a time</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='24' fill='%236366f1'/><path d='M14 52h16l12-30 16 56 12-30h16' fill='none' stroke='white' stroke-width='9' stroke-linecap='round' stroke-linejoin='round'/></svg>">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/css/fx.css?v=2">
   <style>
     :root {
-      --bg-black: #05070a;
-      --bg-card: #0e1420;
-      --border-color: rgba(255, 255, 255, 0.1);
-      --text-main: #f0f4fc;
-      --text-muted: #8e9db5;
-      --accent-cyan: #00d2ff;
-      --accent-blue: #2970ff;
-      --bullish: #00e676;
-      --bullish-glow: rgba(0, 230, 118, 0.25);
-      --bearish: #ff3366;
-      --bearish-glow: rgba(255, 51, 102, 0.25);
-      --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+      --bg: #05060a;
+      --text: #f3f5fb;
+      --muted: rgba(255,255,255,.55);
+      --faint: rgba(255,255,255,.32);
+      --line: rgba(255,255,255,.1);
+      --up: #22c55e;
+      --down: #ef4444;
+      --flat: #818cf8;
+      --glow: 129, 140, 248;           /* rgb of the active card's mood, updated from JS */
+      --head-h: 112px;
+      --mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
     }
-
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-    }
-
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+    html, body { height: 100%; }
     body {
-      background-color: var(--bg-black);
-      color: var(--text-main);
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
       overflow: hidden;
-      height: 100vh;
-      width: 100vw;
-      user-select: none;
       -webkit-font-smoothing: antialiased;
     }
 
-    /* ---------------- Top Floating Navigation ---------------- */
-    .reels-top-nav {
-      position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
-      height: 64px;
-      z-index: 50;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 0 20px;
-      background: linear-gradient(180deg, rgba(5, 7, 10, 0.95) 0%, rgba(5, 7, 10, 0.6) 80%, transparent 100%);
-      backdrop-filter: blur(12px);
-      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    /* Ambient background that follows the sentiment of the reel on screen */
+    .ambient { position: fixed; inset: 0; z-index: 0; mix-blend-mode: screen; pointer-events: none; overflow: hidden; }
+    .ambient::before, .ambient::after {
+      content: ""; position: absolute; width: 70vmax; height: 70vmax; border-radius: 50%;
+      background: radial-gradient(circle, rgba(var(--glow), .22), transparent 62%);
+      transition: background 1s ease; filter: blur(20px);
+    }
+    .ambient::before { top: -35vmax; left: -20vmax; }
+    .ambient::after  { bottom: -40vmax; right: -25vmax; opacity: .7; }
+
+    /* ---------------- Header ---------------- */
+    .top {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 50;
+      padding: max(10px, env(safe-area-inset-top)) 16px 0;
+      background: linear-gradient(180deg, rgba(5,6,10,.96) 55%, rgba(5,6,10,0));
+    }
+    .top-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; max-width: 980px; margin: 0 auto; }
+    .back {
+      display: inline-flex; align-items: center; gap: 6px; height: 34px; padding: 0 12px 0 10px;
+      border-radius: 999px; background: rgba(255,255,255,.07); border: 1px solid var(--line);
+      color: #fff; font-size: .8rem; font-weight: 600; text-decoration: none; transition: background .15s;
+    }
+    .back:hover { background: rgba(255,255,255,.14); }
+    .brand { display: flex; align-items: center; gap: 9px; font-weight: 700; letter-spacing: -.02em; }
+    .brand .mark { width: 26px; height: 26px; border-radius: 8px; display: grid; place-items: center; background: linear-gradient(135deg, #22c55e, #6366f1); }
+    .brand .mark svg { width: 15px; height: 15px; }
+    .brand small { font-weight: 600; color: var(--muted); font-size: .8rem; }
+    .counter { font-family: var(--mono); font-size: .75rem; color: var(--muted); min-width: 64px; text-align: right; }
+    .counter b { color: #fff; font-weight: 500; }
+
+    .chips {
+      display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; max-width: 980px; margin: 10px auto 0; padding: 2px 0 12px;
+      -webkit-mask-image: linear-gradient(90deg, transparent, #000 16px, #000 calc(100% - 28px), transparent);
+              mask-image: linear-gradient(90deg, transparent, #000 16px, #000 calc(100% - 28px), transparent);
+    }
+    .chips::-webkit-scrollbar { display: none; }
+    .chip {
+      flex: none; height: 32px; padding: 0 14px; border-radius: 999px; cursor: pointer; white-space: nowrap;
+      background: rgba(255,255,255,.05); border: 1px solid var(--line); color: var(--muted);
+      font: 600 .8rem "Inter", sans-serif; transition: all .15s;
+    }
+    .chip:hover { color: #fff; background: rgba(255,255,255,.1); }
+    .chip.on { color: #0b0d14; background: #fff; border-color: #fff; }
+    .chip.mono { font-family: var(--mono); font-weight: 500; font-size: .75rem; }
+
+    .progress { position: fixed; top: 0; left: 0; height: 2px; width: 0; z-index: 60; background: linear-gradient(90deg, #22c55e, #6366f1); transition: width .35s ease; }
+
+    /* ---------------- Scroller ---------------- */
+    .reels {
+      position: relative; z-index: 1;
+      height: 100vh; height: 100dvh; overflow-y: scroll; scroll-snap-type: y mandatory; scrollbar-width: none;
+    }
+    .reels::-webkit-scrollbar { display: none; }
+    .slide {
+      height: 100vh; height: 100dvh; scroll-snap-align: start; scroll-snap-stop: always;
+      display: flex; align-items: center; justify-content: center;
+      padding: calc(var(--head-h) + 6px) 16px 18px;
     }
 
-    .nav-left {
-      display: flex;
-      align-items: center;
-      gap: 12px;
+    /* ---------------- Card ---------------- */
+    .card {
+      --accent: 129, 140, 248;
+      width: 100%; max-width: 460px; height: 100%; max-height: 780px;
+      display: flex; flex-direction: column; gap: 16px;
+      padding: 22px 22px 18px; border-radius: 28px; position: relative; overflow: hidden;
+      background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.025));
+      border: 1px solid rgba(var(--accent), .28);
+      box-shadow: 0 30px 80px -20px rgba(0,0,0,.8), 0 0 0 1px rgba(255,255,255,.03) inset, 0 0 70px -30px rgba(var(--accent), .55);
+      backdrop-filter: blur(14px);
+      --sc: .965; opacity: .5; transform: perspective(1100px) rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg)) scale(var(--sc)); transition: opacity .4s ease, transform .25s ease-out; will-change: transform;
+    }
+    .slide.active .card { opacity: 1; --sc: 1; }
+    .card.fx-card::after { z-index: 0; }
+    .card > * { position: relative; z-index: 1; }
+    .card > .fx-edge { position: absolute; z-index: 2; }
+    .card > .heart { position: absolute; z-index: 20; }
+    .card.up   { --accent: 34, 197, 94; }
+    .card.down { --accent: 239, 68, 68; }
+
+    .src { display: flex; align-items: center; gap: 11px; }
+    .avatar { width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center; font-weight: 800; font-size: 1rem; color: #fff; flex: none; }
+    .src-name { font-size: .9rem; font-weight: 700; line-height: 1.2; }
+    .src-meta { font-size: .75rem; color: var(--faint); margin-top: 2px; }
+    .pair {
+      margin-left: auto; font-family: var(--mono); font-size: .75rem; padding: 5px 10px; border-radius: 9px;
+      background: rgba(255,255,255,.07); border: 1px solid var(--line); color: #fff;
     }
 
-    .btn-back {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      padding: 7px 14px;
-      background: rgba(255, 255, 255, 0.08);
-      border: 1px solid var(--border-color);
-      border-radius: 20px;
-      color: #fff;
-      font-size: 0.82rem;
-      font-weight: 600;
-      text-decoration: none;
-      transition: all 0.2s ease;
-    }
-    .btn-back:hover {
-      background: rgba(255, 255, 255, 0.16);
-      border-color: var(--accent-cyan);
-    }
+    .badges { display: flex; flex-wrap: wrap; gap: 8px; }
+    .badge { font-size: .72rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; padding: 5px 10px; border-radius: 999px; display: inline-flex; align-items: center; gap: 6px; }
+    .badge.up   { background: rgba(34,197,94,.15);  color: #4ade80; }
+    .badge.down { background: rgba(239,68,68,.15);  color: #f87171; }
+    .badge.flat { background: rgba(129,140,248,.15); color: #a5b4fc; }
+    .badge.hi   { background: rgba(251,146,60,.16); color: #fdba74; }
+    .badge.read { background: rgba(255,255,255,.06); color: var(--muted); text-transform: none; letter-spacing: 0; font-weight: 600; }
 
-    .brand-reel {
-      font-size: 1.05rem;
-      font-weight: 800;
-      letter-spacing: -0.5px;
-      color: #fff;
-    }
-    .brand-reel span {
-      color: var(--accent-cyan);
-    }
+    .body { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 16px; overflow-y: auto; scrollbar-width: none; }
+    .body::-webkit-scrollbar { display: none; }
+    .body > :first-child { margin-top: auto; }
+    .body > :last-child { margin-bottom: auto; }
+    .title { font-size: clamp(1.3rem, 2.5vw + .9rem, 1.7rem); font-weight: 800; line-height: 1.22; letter-spacing: -.02em; text-wrap: balance; }
 
-    /* Genre Dropdown in Top Nav */
-    .genre-dropdown-wrap {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
+    .points { display: flex; flex-direction: column; gap: 10px; }
+    .point { display: flex; gap: 12px; font-size: .94rem; line-height: 1.5; color: rgba(255,255,255,.78); }
+    .point i { flex: none; width: 6px; height: 6px; margin-top: 9px; border-radius: 50%; background: rgb(var(--accent)); box-shadow: 0 0 10px rgb(var(--accent)); }
+    .point:first-child { color: #fff; font-weight: 500; }
 
-    .genre-select {
-      background: #131b2a;
-      color: #fff;
-      border: 1px solid rgba(0, 210, 255, 0.3);
-      padding: 8px 16px;
-      border-radius: 24px;
-      font-size: 0.88rem;
-      font-weight: 700;
-      outline: none;
-      cursor: pointer;
-      box-shadow: 0 0 15px rgba(0, 210, 255, 0.15);
-      transition: all 0.2s ease;
-    }
-    .genre-select:hover, .genre-select:focus {
-      border-color: var(--accent-cyan);
-      box-shadow: 0 0 20px rgba(0, 210, 255, 0.3);
-      background: #182338;
-    }
+    .meter { padding: 12px 14px; border-radius: 16px; background: rgba(0,0,0,.28); border: 1px solid var(--line); }
+    .meter-head { display: flex; justify-content: space-between; align-items: baseline; font-size: .7rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--faint); }
+    .meter-head b { font-family: var(--mono); font-weight: 500; font-size: .8rem; letter-spacing: 0; color: rgb(var(--accent)); }
+    .track { position: relative; height: 6px; margin-top: 10px; border-radius: 6px; background: rgba(255,255,255,.1); }
+    .track::after { content: ""; position: absolute; left: 50%; top: -3px; bottom: -3px; width: 1px; background: rgba(255,255,255,.35); }
+    .fill { position: absolute; top: 0; bottom: 0; border-radius: 6px; background: rgb(var(--accent)); box-shadow: 0 0 12px rgba(var(--accent), .7); transition: width .8s cubic-bezier(.2,.8,.2,1) .2s; }
 
-    .nav-right {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-    }
+    .tags { display: flex; flex-wrap: wrap; gap: 6px; }
+    .tag { font-size: .73rem; color: var(--faint); padding: 3px 9px; border-radius: 999px; background: rgba(255,255,255,.04); }
 
-    .reel-counter-badge {
-      background: rgba(255, 255, 255, 0.1);
-      border: 1px solid var(--border-color);
-      padding: 5px 12px;
-      border-radius: 16px;
-      font-size: 0.78rem;
-      font-family: var(--font-mono);
-      font-weight: 600;
-      color: var(--accent-cyan);
+    .actions { display: flex; align-items: center; gap: 10px; padding-top: 14px; border-top: 1px solid var(--line); }
+    .act {
+      height: 44px; min-width: 44px; padding: 0 14px; border-radius: 14px; cursor: pointer;
+      display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+      background: rgba(255,255,255,.07); border: 1px solid var(--line); color: #fff;
+      font: 600 .84rem "Inter", sans-serif; text-decoration: none; transition: transform .15s, background .15s, border-color .15s;
     }
+    .act:hover { background: rgba(255,255,255,.13); transform: translateY(-1px); }
+    .act:active { transform: scale(.95); }
+    .act svg { width: 18px; height: 18px; flex: none; }
+    .act.liked { color: #fb7185; border-color: rgba(251,113,133,.5); background: rgba(251,113,133,.12); }
+    .act.liked svg { fill: currentColor; }
+    .act.primary { margin-left: auto; flex: 1; max-width: 190px; background: #fff; color: #0b0d14; border-color: #fff; }
+    .act.primary:hover { background: #e8eaf6; }
 
-    /* ---------------- Vertical Reel Scroller ---------------- */
-    .reels-container {
-      width: 100vw;
-      height: 100vh;
-      overflow-y: scroll;
-      scroll-snap-type: y mandatory;
-      scrollbar-width: none;
-      -ms-overflow-style: none;
-      scroll-behavior: smooth;
+    .heart {
+      position: absolute; top: 50%; left: 50%; z-index: 20; font-size: 5.5rem; pointer-events: none; opacity: 0;
+      transform: translate(-50%, -50%) scale(0); filter: drop-shadow(0 0 30px rgba(244,63,94,.8));
     }
-    .reels-container::-webkit-scrollbar {
-      display: none;
-    }
+    .heart.pop { animation: pop .75s ease-out; }
+    @keyframes pop { 0% { opacity: 0; transform: translate(-50%,-50%) scale(.2); } 40% { opacity: 1; transform: translate(-50%,-50%) scale(1.25); } 100% { opacity: 0; transform: translate(-50%,-50%) scale(1); } }
 
-    .reel-slide {
-      width: 100vw;
-      height: 100vh;
-      scroll-snap-align: start;
-      scroll-snap-stop: always;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      position: relative;
-      padding: 74px 16px 20px;
+    /* ---------------- Side controls (desktop) ---------------- */
+    .side {
+      position: fixed; right: max(18px, calc(50% - 400px)); top: 50%; transform: translateY(-50%); z-index: 40;
+      display: flex; flex-direction: column; align-items: center; gap: 10px;
     }
+    .nav {
+      width: 44px; height: 44px; border-radius: 50%; cursor: pointer; display: grid; place-items: center;
+      background: rgba(255,255,255,.07); border: 1px solid var(--line); color: #fff; backdrop-filter: blur(10px); transition: all .15s;
+    }
+    .nav:hover { background: #fff; color: #0b0d14; }
+    .nav:disabled { opacity: .25; pointer-events: none; }
+    .nav svg { width: 18px; height: 18px; }
+    .keys { margin-top: 6px; font-size: .66rem; color: var(--faint); text-align: center; line-height: 1.6; }
+    .keys kbd { font-family: var(--mono); padding: 1px 5px; border-radius: 4px; border: 1px solid var(--line); background: rgba(255,255,255,.05); }
 
-    /* The Instagram Reel Card */
-    .reel-card {
-      width: 100%;
-      max-width: 480px;
-      height: calc(100vh - 96px);
-      max-height: 840px;
-      border-radius: 24px;
-      border: 1px solid var(--border-color);
-      position: relative;
-      display: flex;
-      flex-direction: column;
-      justify-content: space-between;
-      padding: 24px 22px 20px;
-      overflow: hidden;
-      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.8), 0 0 1px rgba(255, 255, 255, 0.2);
-      transition: transform 0.3s ease;
+    .hint {
+      position: fixed; left: 50%; bottom: 92px; transform: translateX(-50%); z-index: 45; pointer-events: none; white-space: nowrap;
+      padding: 7px 12px; border-radius: 999px; font-size: .78rem; color: var(--muted);
+      background: rgba(10,12,20,.75); border: 1px solid var(--line); backdrop-filter: blur(10px);
+      display: flex; align-items: center; gap: 8px; transition: opacity .5s;
+      animation: bob 1.8s ease-in-out infinite;
     }
+    .hint.gone { opacity: 0; }
+    @keyframes bob { 50% { transform: translate(-50%, -5px); } }
 
-    /* Ambient Sentiment Backgrounds */
-    .reel-card.sentiment-bullish {
-      background: radial-gradient(circle at 50% 15%, rgba(0, 230, 118, 0.18) 0%, #0d151c 65%, #070b10 100%);
-      border-color: rgba(0, 230, 118, 0.3);
+    .toast {
+      position: fixed; left: 50%; bottom: 28px; z-index: 80; transform: translate(-50%, 20px); opacity: 0;
+      padding: 10px 16px; border-radius: 12px; font-size: .85rem; font-weight: 600;
+      background: #fff; color: #0b0d14; transition: all .25s; pointer-events: none;
     }
-    .reel-card.sentiment-bearish {
-      background: radial-gradient(circle at 50% 15%, rgba(255, 51, 102, 0.18) 0%, #170e14 65%, #0a0709 100%);
-      border-color: rgba(255, 51, 102, 0.3);
-    }
-    .reel-card.sentiment-neutral {
-      background: radial-gradient(circle at 50% 15%, rgba(0, 210, 255, 0.14) 0%, #0f1624 65%, #07090f 100%);
-      border-color: rgba(0, 210, 255, 0.25);
-    }
+    .toast.show { opacity: 1; transform: translate(-50%, 0); }
 
-    /* Story Progress Bar */
-    .story-progress-bar {
-      position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      height: 3px;
-      background: rgba(255, 255, 255, 0.15);
-    }
-    .story-progress-fill {
-      height: 100%;
-      background: var(--accent-cyan);
-      width: 0%;
-      transition: width 0.1s linear;
-    }
+    /* ---------------- States ---------------- */
+    .state { text-align: center; color: var(--muted); max-width: 320px; }
+    .state .big { font-size: 2.6rem; margin-bottom: 10px; }
+    .state h2 { color: #fff; font-size: 1.1rem; margin-bottom: 6px; }
+    .state button { margin-top: 16px; height: 38px; padding: 0 18px; border-radius: 999px; border: 0; cursor: pointer; font: 700 .85rem "Inter", sans-serif; background: #fff; color: #0b0d14; }
+    .skel { width: 100%; max-width: 460px; height: 100%; max-height: 780px; border-radius: 28px; border: 1px solid var(--line);
+      background: linear-gradient(110deg, rgba(255,255,255,.03) 30%, rgba(255,255,255,.08) 50%, rgba(255,255,255,.03) 70%) 0 0 / 200% 100%; animation: shimmer 1.4s linear infinite; }
+    @keyframes shimmer { to { background-position: -200% 0; } }
 
-    /* Top Reel Header */
-    .card-top {
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
+    @media (max-width: 760px) {
+      .side, .hint .kbd-hint { display: none; }
+      .slide { padding-left: 10px; padding-right: 10px; }
+      .card { padding: 18px 16px 14px; border-radius: 24px; }
+      .brand small { display: none; }
     }
-
-    .source-row {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
+    @media (max-width: 440px) {
+      .back { padding: 0 10px; } .back span { display: none; }
+      .counter { min-width: 0; }
+      .hint { font-size: .72rem; }
     }
-    .source-profile {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
-    .source-avatar {
-      width: 38px;
-      height: 38px;
-      border-radius: 50%;
-      background: linear-gradient(135deg, #00d2ff 0%, #2970ff 100%);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-weight: 800;
-      font-size: 0.95rem;
-      color: #fff;
-      box-shadow: 0 0 10px rgba(0, 210, 255, 0.4);
-    }
-    .source-info {
-      display: flex;
-      flex-direction: column;
-    }
-    .source-name {
-      font-size: 0.88rem;
-      font-weight: 700;
-      color: #fff;
-      display: flex;
-      align-items: center;
-      gap: 5px;
-    }
-    .verified-badge {
-      color: #00d2ff;
-      font-size: 0.8rem;
-    }
-    .source-time {
-      font-size: 0.75rem;
-      color: var(--text-muted);
-    }
-
-    /* Badges Row */
-    .pill-badges {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      flex-wrap: wrap;
-    }
-    .reel-pill {
-      font-size: 0.74rem;
-      font-weight: 800;
-      padding: 4px 10px;
-      border-radius: 20px;
-      letter-spacing: 0.4px;
-      text-transform: uppercase;
-      display: inline-flex;
-      align-items: center;
-      gap: 5px;
-    }
-    .pill-pair {
-      background: rgba(41, 112, 255, 0.2);
-      border: 1px solid rgba(41, 112, 255, 0.4);
-      color: #70a1ff;
-      font-family: var(--font-mono);
-    }
-    .pill-high-impact {
-      background: rgba(255, 145, 0, 0.2);
-      border: 1px solid rgba(255, 145, 0, 0.5);
-      color: #ff9100;
-    }
-    .pill-bullish {
-      background: rgba(0, 230, 118, 0.18);
-      border: 1px solid rgba(0, 230, 118, 0.4);
-      color: var(--bullish);
-    }
-    .pill-bearish {
-      background: rgba(255, 51, 102, 0.18);
-      border: 1px solid rgba(255, 51, 102, 0.4);
-      color: var(--bearish);
-    }
-
-    /* Middle Story Content */
-    .card-middle {
-      margin: auto 0;
-      display: flex;
-      flex-direction: column;
-      gap: 14px;
-    }
-    .reel-title {
-      font-size: 1.35rem;
-      font-weight: 800;
-      line-height: 1.3;
-      color: #ffffff;
-      text-shadow: 0 2px 8px rgba(0, 0, 0, 0.6);
-    }
-    .reel-summary-box {
-      background: rgba(10, 15, 25, 0.6);
-      backdrop-filter: blur(8px);
-      border: 1px solid rgba(255, 255, 255, 0.08);
-      border-radius: 14px;
-      padding: 14px;
-      font-size: 0.92rem;
-      color: #d1dced;
-      line-height: 1.5;
-    }
-    .reel-summary-bullet {
-      display: flex;
-      align-items: flex-start;
-      gap: 8px;
-      margin-bottom: 6px;
-    }
-    .reel-summary-bullet:last-child {
-      margin-bottom: 0;
-    }
-    .bullet-icon {
-      font-size: 0.85rem;
-      margin-top: 2px;
-    }
-
-    /* Sentiment Meter in Card */
-    .sentiment-meter-bar {
-      height: 6px;
-      background: rgba(255, 255, 255, 0.1);
-      border-radius: 3px;
-      overflow: hidden;
-      margin-top: 4px;
-      display: flex;
-    }
-    .sentiment-meter-fill {
-      height: 100%;
-      border-radius: 3px;
-    }
-
-    /* Bottom Tags */
-    .card-bottom {
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
-    }
-    .tags-row {
-      display: flex;
-      gap: 6px;
-      flex-wrap: wrap;
-    }
-    .tag-bubble {
-      background: rgba(255, 255, 255, 0.06);
-      border: 1px solid rgba(255, 255, 255, 0.08);
-      color: var(--text-muted);
-      font-size: 0.75rem;
-      padding: 3px 8px;
-      border-radius: 12px;
-    }
-
-    /* Right Floating Action Rail (Instagram Style) */
-    .reel-actions-rail {
-      position: absolute;
-      right: 28px;
-      bottom: 40px;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 18px;
-      z-index: 10;
-    }
-    @media (max-width: 600px) {
-      .reel-actions-rail {
-        right: 14px;
-        bottom: 24px;
-      }
-    }
-
-    .action-btn-item {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 4px;
-      cursor: pointer;
-    }
-    .action-circle-btn {
-      width: 48px;
-      height: 48px;
-      border-radius: 50%;
-      background: rgba(18, 25, 38, 0.85);
-      border: 1px solid var(--border-color);
-      backdrop-filter: blur(10px);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 1.25rem;
-      color: #fff;
-      transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-    }
-    .action-circle-btn:hover {
-      transform: scale(1.15);
-      background: rgba(255, 255, 255, 0.15);
-      border-color: var(--accent-cyan);
-    }
-    .action-circle-btn.liked {
-      color: #ff3366;
-      border-color: #ff3366;
-      transform: scale(1.1);
-    }
-    .action-label {
-      font-size: 0.72rem;
-      font-weight: 700;
-      color: #fff;
-      text-shadow: 0 1px 4px rgba(0, 0, 0, 0.8);
-    }
-
-    /* Double Tap Big Heart Animation */
-    .big-heart {
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%) scale(0);
-      font-size: 5rem;
-      color: #ff3366;
-      pointer-events: none;
-      opacity: 0;
-      z-index: 30;
-      text-shadow: 0 0 30px rgba(255, 51, 102, 0.8);
-    }
-    .big-heart.animate {
-      animation: heart-pop 0.8s ease-out forwards;
-    }
-    @keyframes heart-pop {
-      0% { transform: translate(-50%, -50%) scale(0); opacity: 0; }
-      50% { transform: translate(-50%, -50%) scale(1.3); opacity: 1; }
-      100% { transform: translate(-50%, -50%) scale(1); opacity: 0; }
-    }
-
-    /* Floating Navigation Arrows */
-    .nav-arrow-btn {
-      width: 40px;
-      height: 40px;
-      border-radius: 50%;
-      background: rgba(255, 255, 255, 0.08);
-      border: 1px solid var(--border-color);
-      color: #fff;
-      font-size: 1.1rem;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      transition: all 0.2s ease;
-    }
-    .nav-arrow-btn:hover {
-      background: var(--accent-blue);
-      border-color: var(--accent-blue);
-    }
-
-    /* Empty state */
-    .empty-reels {
-      text-align: center;
-      padding: 40px;
-      color: var(--text-muted);
-    }
+    @media (max-height: 640px) { .points .point:nth-child(n+3) { display: none; } }
+    @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } .reels { scroll-behavior: auto; } }
   </style>
 </head>
 <body>
+  <canvas class="fx-stars" id="stars"></canvas>
+  <div class="ambient"></div>
+  <div class="progress" id="progress"></div>
 
-  <!-- Top Floating Header -->
-  <header class="reels-top-nav">
-    <div class="nav-left">
-      <a href="/" class="btn-back">
-        <span>← Terminal</span>
+  <header class="top">
+    <div class="top-row">
+      <a href="/" class="back" aria-label="Back to terminal">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+        <span>Terminal</span>
       </a>
-      <div class="brand-reel">
-        FX<span>Pulse</span> Reels
+      <div class="brand">
+        <span class="mark"><svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h4l3-8 4 16 3-8h4"/></svg></span>
+        <span>FXPulse <small>Reels</small></span>
       </div>
+      <div class="counter" id="reelCounter">– / –</div>
     </div>
-
-    <!-- Genre Dropdown Selector -->
-    <div class="genre-dropdown-wrap">
-      <select id="genreSelect" class="genre-select" onchange="onGenreChange(this.value)">
-        <option value="all">🔥 All Breaking News</option>
-        <optgroup label="── Currency Pairs ──">
-          <option value="EUR/USD">💶 EUR/USD (Euro)</option>
-          <option value="GBP/USD">💷 GBP/USD (Sterling)</option>
-          <option value="USD/JPY">💴 USD/JPY (Japanese Yen)</option>
-          <option value="AUD/USD">🇦🇺 AUD/USD (Australian Dollar)</option>
-          <option value="USD/CAD">🇨🇦 USD/CAD (Canadian Dollar)</option>
-          <option value="USD/CHF">🇨🇭 USD/CHF (Swiss Franc)</option>
-          <option value="NZD/USD">🇳🇿 NZD/USD (Kiwi)</option>
-          <option value="EUR/GBP">🇪🇺 EUR/GBP Cross</option>
-          <option value="GBP/JPY">🇬🇧 GBP/JPY Cross</option>
-          <option value="XAU/USD">🥇 Gold (XAU/USD)</option>
-          <option value="DXY">💵 US Dollar Index (DXY)</option>
-          <option value="WTI/USD">🛢️ Crude Oil (WTI)</option>
-        </optgroup>
-        <optgroup label="── Market Catalysts ──">
-          <option value="high_impact">⚡ High Impact & Breaking Only</option>
-          <option value="bullish">🟢 Bullish Momentum Stories</option>
-          <option value="bearish">🔴 Bearish Selloff Alerts</option>
-          <option value="central_banks">🏛️ Central Banks (Fed, ECB, BoE, BoJ)</option>
-          <option value="inflation">📊 Inflation, CPI & Interest Rates</option>
-          <option value="technicals">📈 Technical Analysis & Breakouts</option>
-        </optgroup>
-      </select>
-    </div>
-
-    <div class="nav-right">
-      <span class="reel-counter-badge" id="reelCounter">Reel 1 / --</span>
-    </div>
+    <nav class="chips" id="chips" aria-label="Reel categories"></nav>
   </header>
 
-  <!-- Vertical Snapping Reel Container -->
-  <main class="reels-container" id="reelsContainer">
-    <!-- Rendered dynamically by script -->
-    <div class="reel-slide">
-      <div style="text-align: center; color: var(--text-muted);">
-        <div style="font-size: 2.5rem; margin-bottom: 12px; animation: spin 1s linear infinite;">⏳</div>
-        <div>Loading Forex Reels...</div>
-      </div>
-    </div>
-  </main>
+  <main class="reels" id="reelsContainer" tabindex="-1"></main>
 
+  <div class="side" id="side">
+    <button class="nav" id="prevBtn" onclick="go(-1)" title="Previous (↑ / K)" aria-label="Previous reel"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m18 15-6-6-6 6"/></svg></button>
+    <button class="nav" id="nextBtn" onclick="go(1)" title="Next (↓ / J)" aria-label="Next reel"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></button>
+    <div class="keys"><kbd>↑</kbd> <kbd>↓</kbd><br><kbd>L</kbd> like</div>
+  </div>
+
+  <div class="hint" id="hint"><span>↓</span> Swipe or scroll for the next story</div>
+  <div class="toast" id="toast"></div>
+
+  <script src="/static/js/fx.js?v=3"></script>
   <script>
+    FX.stars(document.getElementById("stars"));
+    const GENRES = [
+      ["all", "All news"], ["high_impact", "⚡ High impact"], ["bullish", "▲ Bullish"], ["bearish", "▼ Bearish"],
+      ["central_banks", "Central banks"], ["inflation", "Inflation"], ["technicals", "Technicals"],
+      ["EUR/USD", "EUR/USD", 1], ["GBP/USD", "GBP/USD", 1], ["USD/JPY", "USD/JPY", 1], ["XAU/USD", "Gold", 1],
+      ["DXY", "DXY", 1], ["WTI/USD", "Oil", 1], ["AUD/USD", "AUD/USD", 1], ["USD/CAD", "USD/CAD", 1], ["USD/CHF", "USD/CHF", 1],
+      ["NZD/USD", "NZD/USD", 1], ["EUR/GBP", "EUR/GBP", 1], ["GBP/JPY", "GBP/JPY", 1],
+    ];
+    const MOOD = { up: "34, 197, 94", down: "239, 68, 68", flat: "129, 140, 248" };
+    const AVATARS = ["#6366f1", "#0ea5e9", "#14b8a6", "#f59e0b", "#ec4899", "#8b5cf6", "#22c55e", "#f43f5e"];
+
     let currentGenre = "all";
     let reelsData = [];
-    let currentActiveIndex = 0;
-    const likedSet = new Set();
+    let active = 0;
+    let observer = null;
+    const liked = loadLiked();
+
+    const $ = (id) => document.getElementById(id);
 
     document.addEventListener("DOMContentLoaded", () => {
-      loadReels("all");
-      setupScrollListener();
-      setupKeyboardNav();
+      setTimeout(hideHint, 4500);
+      renderChips();
+      const g = new URLSearchParams(location.search).get("genre");
+      loadReels(g && GENRES.some(x => x[0] === g) ? g : "all");
+      document.addEventListener("keydown", onKey);
+      $("reelsContainer").addEventListener("scroll", hideHint, { once: true, passive: true });
     });
 
+    /* ---------- data ---------- */
     async function loadReels(genre) {
       currentGenre = genre;
-      const container = document.getElementById("reelsContainer");
-      container.innerHTML = `
-        <div class="reel-slide">
-          <div style="text-align: center; color: var(--text-muted);">
-            <div style="font-size: 2.5rem; margin-bottom: 12px;">⚡</div>
-            <div style="font-weight: 700;">Loading ${genre.toUpperCase()} Reels...</div>
-          </div>
-        </div>`;
-
+      renderChips();
+      const box = $("reelsContainer");
+      box.innerHTML = `<div class="slide active"><div class="skel"></div></div>`;
+      $("reelCounter").innerHTML = "– / –";
       try {
         const res = await fetch(`/api/reels?genre=${encodeURIComponent(genre)}&limit=50`);
+        if (!res.ok) throw new Error(`Server returned ${res.status}`);
         const data = await res.json();
         reelsData = data.reels || [];
-
-        if (reelsData.length === 0) {
-          container.innerHTML = `
-            <div class="reel-slide">
-              <div class="empty-reels">
-                <div style="font-size: 3rem; margin-bottom: 12px;">📭</div>
-                <h2>No reels found for "${genre}"</h2>
-                <p style="margin-top: 8px;">Try selecting another genre from the dropdown above.</p>
-              </div>
-            </div>`;
-          document.getElementById("reelCounter").textContent = "0 / 0";
+        if (!reelsData.length) {
+          box.innerHTML = `<div class="slide active"><div class="state"><div class="big">📭</div><h2>No stories here yet</h2><p>Nothing matched this category right now.</p><button onclick="loadReels('all')">Show all news</button></div></div>`;
+          setProgress(0, 0);
           return;
         }
-
-        renderReels(reelsData);
-        container.scrollTop = 0;
-        updateCounter(0);
+        renderReels();
+        box.scrollTop = 0;
+        setActive(0);
       } catch (err) {
         console.error("Failed to load reels:", err);
-        container.innerHTML = `
-          <div class="reel-slide">
-            <div class="empty-reels" style="color: var(--bearish);">
-              <h2>Failed to load news reels</h2>
-              <p>${err.message}</p>
-            </div>
-          </div>`;
+        box.innerHTML = `<div class="slide active"><div class="state"><div class="big">⚠️</div><h2>Couldn't load reels</h2><p>${escapeHtml(err.message)}</p><button onclick="loadReels('${currentGenre}')">Try again</button></div></div>`;
       }
     }
 
-    function onGenreChange(genre) {
-      loadReels(genre);
-    }
-
-    function renderReels(articles) {
-      const container = document.getElementById("reelsContainer");
-      container.innerHTML = articles.map((art, idx) => {
-        const sentiment = art.sentiment || "NEUTRAL";
-        const impact = art.impact || "MEDIUM";
-        const primaryPair = art.primary_pair || "GENERAL";
-        const pubDate = formatTimeAgo(art.published_at);
-        const source = art.source || "Forex News";
-        const tags = Array.isArray(art.tags) ? art.tags : [];
-        const isLiked = likedSet.has(art.id || art.guid);
-
-        const sentimentClass = sentiment === "BULLISH" 
-          ? "sentiment-bullish" 
-          : sentiment === "BEARISH" 
-          ? "sentiment-bearish" 
-          : "sentiment-neutral";
-
-        const sentimentPill = sentiment === "BULLISH"
-          ? `<span class="reel-pill pill-bullish">🟢 Bullish</span>`
-          : sentiment === "BEARISH"
-          ? `<span class="reel-pill pill-bearish">🔴 Bearish</span>`
-          : `<span class="reel-pill pill-pair">⚪ Neutral</span>`;
-
-        const impactPill = impact === "HIGH"
-          ? `<span class="reel-pill pill-high-impact">⚡ High Impact</span>`
-          : "";
-
-        const summaryText = art.summary || art.content || art.title;
-        const bullets = parseBullets(summaryText);
-
-        const meterColor = sentiment === "BULLISH" ? "var(--bullish)" : sentiment === "BEARISH" ? "var(--bearish)" : "var(--accent-cyan)";
-        const meterWidth = sentiment === "BULLISH" ? "75%" : sentiment === "BEARISH" ? "75%" : "50%";
-
-        return `
-          <div class="reel-slide" data-index="${idx}">
-            <div class="reel-card ${sentimentClass}" ondblclick="onDoubleTap(event, '${art.id || art.guid}', ${idx})">
-              <!-- Top Story Progress Bar -->
-              <div class="story-progress-bar">
-                <div class="story-progress-fill" style="width: 100%;"></div>
-              </div>
-
-              <!-- Big Heart Animation -->
-              <div class="big-heart" id="bigHeart_${idx}">❤️</div>
-
-              <!-- Top Card Header -->
-              <div class="card-top">
-                <div class="source-row">
-                  <div class="source-profile">
-                    <div class="source-avatar">${source.charAt(0)}</div>
-                    <div class="source-info">
-                      <span class="source-name">${escapeHtml(source)} <span class="verified-badge">✔</span></span>
-                      <span class="source-time">${pubDate}</span>
-                    </div>
-                  </div>
-                  <div class="pill-badges">
-                    <span class="reel-pill pill-pair">${primaryPair}</span>
-                  </div>
-                </div>
-
-                <div class="pill-badges">
-                  ${sentimentPill}
-                  ${impactPill}
-                </div>
-              </div>
-
-              <!-- Middle Content -->
-              <div class="card-middle">
-                <h2 class="reel-title">${escapeHtml(art.title)}</h2>
-
-                <div class="reel-summary-box">
-                  ${bullets.map(b => `
-                    <div class="reel-summary-bullet">
-                      <span class="bullet-icon">⚡</span>
-                      <span>${b}</span>
-                    </div>
-                  `).join("")}
-
-                  <div style="margin-top: 10px;">
-                    <div style="display:flex; justify-content:space-between; font-size:0.72rem; color:var(--text-muted); font-weight:700;">
-                      <span>MARKET CATALYST BIAS</span>
-                      <span style="color:${meterColor}">${sentiment}</span>
-                    </div>
-                    <div class="sentiment-meter-bar">
-                      <div class="sentiment-meter-fill" style="width:${meterWidth}; background:${meterColor}"></div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <!-- Bottom Tags -->
-              <div class="card-bottom">
-                <div class="tags-row">
-                  <span class="tag-bubble">#${primaryPair.replace("/", "")}</span>
-                  ${tags.slice(0, 3).map(t => `<span class="tag-bubble">#${t.replace(/\s+/g, "")}</span>`).join("")}
-                  <span class="tag-bubble">#FXPulse</span>
-                </div>
-              </div>
-            </div>
-
-            <!-- Floating Action Rail (Right Side) -->
-            <div class="reel-actions-rail">
-              <!-- Up Arrow -->
-              <button class="nav-arrow-btn" onclick="scrollToReel(${idx - 1})" title="Previous Reel (Up)">▲</button>
-
-              <!-- Like -->
-              <div class="action-btn-item" onclick="toggleLike('${art.id || art.guid}', ${idx})">
-                <div class="action-circle-btn ${isLiked ? 'liked' : ''}" id="likeBtn_${idx}">
-                  ${isLiked ? '❤️' : '🤍'}
-                </div>
-                <span class="action-label" id="likeCount_${idx}">${isLiked ? '1' : 'Like'}</span>
-              </div>
-
-              <!-- Share Link -->
-              <div class="action-btn-item" onclick="shareReel('${escapeHtml(art.title)}', '${escapeHtml(art.url)}')">
-                <div class="action-circle-btn">🔗</div>
-                <span class="action-label">Share</span>
-              </div>
-
-              <!-- Full Story -->
-              <a href="${escapeHtml(art.url)}" target="_blank" rel="noopener noreferrer" class="action-btn-item" style="text-decoration:none;">
-                <div class="action-circle-btn" style="color:var(--accent-cyan);">↗</div>
-                <span class="action-label">Story</span>
-              </a>
-
-              <!-- Down Arrow -->
-              <button class="nav-arrow-btn" onclick="scrollToReel(${idx + 1})" title="Next Reel (Down)">▼</button>
-            </div>
-          </div>
-        `;
-      }).join("");
-    }
-
-    function parseBullets(text) {
-      if (!text) return ["No further summary available."];
-      // Split sentences cleanly
-      const sents = text.split(/(?<=[.!?])\s+/).filter(s => s.trim().length > 10);
-      if (sents.length <= 1) {
-        return [text];
-      }
-      return sents.slice(0, 3);
-    }
-
-    function setupScrollListener() {
-      const container = document.getElementById("reelsContainer");
-      let scrollTimeout = null;
-
-      container.addEventListener("scroll", () => {
-        clearTimeout(scrollTimeout);
-        scrollTimeout = setTimeout(() => {
-          const index = Math.round(container.scrollTop / window.innerHeight);
-          updateCounter(index);
-        }, 80);
-      });
-    }
-
-    function updateCounter(index) {
-      currentActiveIndex = Math.max(0, Math.min(index, reelsData.length - 1));
-      const counter = document.getElementById("reelCounter");
-      if (counter && reelsData.length > 0) {
-        counter.textContent = `Reel ${currentActiveIndex + 1} / ${reelsData.length}`;
-      }
-    }
-
-    function scrollToReel(index) {
-      if (index < 0 || index >= reelsData.length) return;
-      const container = document.getElementById("reelsContainer");
-      container.scrollTo({
-        top: index * window.innerHeight,
-        behavior: "smooth"
-      });
-    }
-
-    function setupKeyboardNav() {
-      document.addEventListener("keydown", (e) => {
-        if (e.key === "ArrowDown" || e.key === " " || e.key === "j") {
-          e.preventDefault();
-          scrollToReel(currentActiveIndex + 1);
-        } else if (e.key === "ArrowUp" || e.key === "k") {
-          e.preventDefault();
-          scrollToReel(currentActiveIndex - 1);
+    function renderChips() {
+      $("chips").innerHTML = GENRES.map(([id, label, mono]) =>
+        `<button class="chip ${mono ? "mono" : ""} ${id === currentGenre ? "on" : ""}" data-g="${id}">${escapeHtml(label)}</button>`).join("");
+      $("chips").onclick = (e) => {
+        const b = e.target.closest(".chip");
+        if (b && b.dataset.g !== currentGenre) {
+          history.replaceState(null, "", b.dataset.g === "all" ? "/reels" : `/reels?genre=${encodeURIComponent(b.dataset.g)}`);
+          loadReels(b.dataset.g);
         }
-      });
+      };
+      const on = $("chips").querySelector(".on");
+      if (on) on.scrollIntoView({ inline: "center", block: "nearest", behavior: "smooth" });
     }
 
-    function toggleLike(id, idx) {
-      const btn = document.getElementById(`likeBtn_${idx}`);
-      const countEl = document.getElementById(`likeCount_${idx}`);
-      if (likedSet.has(id)) {
-        likedSet.delete(id);
-        btn.innerHTML = "🤍";
-        btn.classList.remove("liked");
-        countEl.textContent = "Like";
-      } else {
-        likedSet.add(id);
-        btn.innerHTML = "❤️";
-        btn.classList.add("liked");
-        countEl.textContent = "1";
-        triggerHeartAnim(idx);
+    /* ---------- rendering ---------- */
+    function mood(a) {
+      return a.sentiment === "BULLISH" ? "up" : a.sentiment === "BEARISH" ? "down" : "flat";
+    }
+
+    function renderReels() {
+      $("reelsContainer").innerHTML = reelsData.map((a, i) => {
+        const m = mood(a);
+        const score = Number(a.sentiment_score) || 0;
+        const half = Math.min(Math.abs(score), 1) * 50;
+        const fill = score >= 0 ? `left:50%;width:${half}%` : `right:50%;width:${half}%`;
+        const points = toPoints(a.summary || a.content || a.title);
+        const words = (a.summary || a.content || "").split(/\s+/).length;
+        const tags = Array.isArray(a.tags) ? a.tags : [];
+        const pair = a.primary_pair && a.primary_pair !== "GENERAL" ? a.primary_pair : "";
+        const src = a.source || "Forex News";
+        const color = AVATARS[hash(src) % AVATARS.length];
+        const isLiked = liked.has(String(a.id || a.guid));
+        const label = m === "up" ? "▲ Bullish" : m === "down" ? "▼ Bearish" : "● Neutral";
+        return `
+        <section class="slide" data-i="${i}" aria-label="Reel ${i + 1}">
+          <article class="card fx-card ${m === "up" ? "bull" : m === "down" ? "bear" : ""} ${m}" data-tilt="7" ondblclick="doubleTap(${i})">
+            <div class="fx-edge"></div>
+            <div class="heart" id="heart${i}">❤️</div>
+            <div class="src">
+              <div class="avatar" style="background:${color}">${escapeHtml(src.charAt(0).toUpperCase())}</div>
+              <div>
+                <div class="src-name">${escapeHtml(src)}</div>
+                <div class="src-meta">${timeAgo(a.published_at)}</div>
+              </div>
+              ${pair ? `<span class="pair">${escapeHtml(pair)}</span>` : ""}
+            </div>
+            <div class="badges">
+              <span class="badge ${m}">${label}</span>
+              ${a.impact === "HIGH" ? `<span class="badge hi">⚡ High impact</span>` : ""}
+              <span class="badge read">${Math.max(1, Math.round(words / 200))} min read</span>
+            </div>
+            <div class="body">
+              <h2 class="title">${escapeHtml(a.title)}</h2>
+              <div class="points">${points.map(p => `<div class="point"><i></i><span>${escapeHtml(p)}</span></div>`).join("")}</div>
+              <div class="meter">
+                <div class="meter-head"><span>Market sentiment</span><b>${score > 0 ? "+" : ""}${score.toFixed(2)}</b></div>
+                <div class="track"><div class="fill" data-style="${fill}"></div></div>
+              </div>
+            </div>
+            <div class="tags">${[pair && "#" + pair.replace("/", ""), ...tags.slice(0, 3).map(t => "#" + String(t).replace(/\s+/g, ""))].filter(Boolean).map(t => `<span class="tag">${escapeHtml(t)}</span>`).join("")}</div>
+            <div class="actions">
+              <button class="act ${isLiked ? "liked" : ""}" id="like${i}" onclick="toggleLike(${i})" aria-label="Like">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1-1.1a5.5 5.5 0 0 0-7.8 7.8l1 1.1L12 21l7.8-7.5 1-1.1a5.5 5.5 0 0 0 0-7.8z"/></svg>
+              </button>
+              <button class="act" onclick="share(${i})" aria-label="Copy link">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7"/><path d="M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7"/></svg>
+              </button>
+              <a class="act primary" href="${escapeHtml(a.url)}" target="_blank" rel="noopener noreferrer">
+                Read story
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17 17 7"/><path d="M8 7h9v9"/></svg>
+              </a>
+            </div>
+          </article>
+        </section>`;
+      }).join("");
+
+      if (observer) observer.disconnect();
+      observer = new IntersectionObserver((entries) => {
+        entries.forEach(en => { if (en.isIntersecting) setActive(Number(en.target.dataset.i)); });
+      }, { root: $("reelsContainer"), threshold: 0.6 });
+      document.querySelectorAll(".slide[data-i]").forEach(s => observer.observe(s));
+    }
+
+    // Split a summary into at most three short, readable points.
+    function toPoints(text) {
+      if (!text) return ["No summary available for this story."];
+      const clean = text.replace(/\s+/g, " ").trim();
+      const sents = clean.split(/(?<=[.!?])\s+/).filter(s => s.length > 12);
+      return (sents.length ? sents : [clean]).slice(0, 3).map(s => s.length > 220 ? s.slice(0, 217).trimEnd() + "…" : s);
+    }
+
+    /* ---------- active reel ---------- */
+    function setActive(i) {
+      if (!reelsData.length) return;
+      active = Math.max(0, Math.min(i, reelsData.length - 1));
+      document.querySelectorAll(".slide.active").forEach(s => s.classList.remove("active"));
+      const slide = document.querySelector(`.slide[data-i="${active}"]`);
+      if (slide) {
+        slide.classList.add("active");
+        const t = slide.querySelector(".title");
+        if (t && !t.dataset.gen) { t.dataset.gen = "1"; FX.generate(t, { delay: 120 }); }
+        const f = slide.querySelector(".fill");
+        if (f && f.dataset.style) requestAnimationFrame(() => { f.style.cssText = f.dataset.style; });
       }
+      document.documentElement.style.setProperty("--glow", MOOD[mood(reelsData[active])]);
+      setProgress(active + 1, reelsData.length);
+      $("prevBtn").disabled = active === 0;
+      $("nextBtn").disabled = active === reelsData.length - 1;
     }
 
-    function onDoubleTap(event, id, idx) {
-      if (!likedSet.has(id)) {
-        toggleLike(id, idx);
-      } else {
-        triggerHeartAnim(idx);
+    function setProgress(n, total) {
+      $("reelCounter").innerHTML = total ? `<b>${n}</b> / ${total}` : "0 / 0";
+      $("progress").style.width = total ? `${(n / total) * 100}%` : "0";
+    }
+
+    function go(delta) {
+      const i = active + delta;
+      if (i < 0 || i >= reelsData.length) return;
+      const box = $("reelsContainer");
+      box.scrollTo({ top: i * box.clientHeight, behavior: "smooth" });
+    }
+
+    function onKey(e) {
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+      if (["ArrowDown", "j", " ", "PageDown"].includes(e.key)) { e.preventDefault(); go(1); }
+      else if (["ArrowUp", "k", "PageUp"].includes(e.key)) { e.preventDefault(); go(-1); }
+      else if (e.key === "l") toggleLike(active);
+      else if (e.key === "Home") { e.preventDefault(); go(-active); }
+      else if (e.key === "End") { e.preventDefault(); go(reelsData.length - 1 - active); }
+    }
+
+    function hideHint() { $("hint").classList.add("gone"); }
+
+    /* ---------- likes / share ---------- */
+    function loadLiked() {
+      try { return new Set(JSON.parse(localStorage.getItem("fxpulse_liked") || "[]")); } catch { return new Set(); }
+    }
+    function saveLiked() {
+      try { localStorage.setItem("fxpulse_liked", JSON.stringify([...liked])); } catch {}
+    }
+
+    function toggleLike(i) {
+      const a = reelsData[i];
+      if (!a) return;
+      const id = String(a.id || a.guid);
+      const btn = $(`like${i}`);
+      if (liked.has(id)) { liked.delete(id); btn.classList.remove("liked"); }
+      else {
+        liked.add(id); btn.classList.add("liked"); pop(i);
+        const r = btn.getBoundingClientRect(); FX.burst(r.left + r.width / 2, r.top + r.height / 2);
       }
+      saveLiked();
     }
 
-    function triggerHeartAnim(idx) {
-      const heart = document.getElementById(`bigHeart_${idx}`);
-      if (!heart) return;
-      heart.classList.remove("animate");
-      void heart.offsetWidth; // Force reflow
-      heart.classList.add("animate");
+    function doubleTap(i) {
+      const a = reelsData[i];
+      if (!a) return;
+      if (!liked.has(String(a.id || a.guid))) toggleLike(i); else pop(i);
     }
 
-    function shareReel(title, url) {
-      if (navigator.clipboard) {
-        navigator.clipboard.writeText(`${title} - ${url}`).then(() => {
-          alert("Link copied to clipboard!");
-        });
-      } else {
-        alert(url);
-      }
+    function pop(i) {
+      const h = $(`heart${i}`);
+      if (!h) return;
+      h.classList.remove("pop"); void h.offsetWidth; h.classList.add("pop");
     }
 
-    function formatTimeAgo(isoString) {
-      if (!isoString) return "just now";
+    async function share(i) {
+      const a = reelsData[i];
+      if (!a) return;
+      const text = `${a.title} — ${a.url}`;
       try {
-        const date = new Date(isoString);
-        const seconds = Math.floor((Date.now() - date.getTime()) / 1000);
-        if (seconds < 60) return "just now";
-        const minutes = Math.floor(seconds / 60);
-        if (minutes < 60) return `${minutes}m ago`;
-        const hours = Math.floor(minutes / 60);
-        if (hours < 24) return `${hours}h ago`;
-        const days = Math.floor(hours / 24);
-        return `${days}d ago`;
+        if (navigator.share && matchMedia("(pointer: coarse)").matches) {
+          await navigator.share({ title: a.title, url: a.url });
+          return;
+        }
+        await navigator.clipboard.writeText(text);
+        toast("Link copied");
       } catch {
-        return isoString;
+        if (!(window.getSelection && String(window.getSelection()))) toast("Couldn't copy the link");
       }
+    }
+
+    let toastTimer = null;
+    function toast(msg) {
+      const t = $("toast");
+      t.textContent = msg;
+      t.classList.add("show");
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => t.classList.remove("show"), 1800);
+    }
+
+    /* ---------- helpers ---------- */
+    function timeAgo(iso) {
+      if (!iso) return "just now";
+      const s = Math.floor((Date.now() - new Date(iso).getTime()) / 1000);
+      if (isNaN(s)) return iso;
+      if (s < 60) return "just now";
+      const m = Math.floor(s / 60);
+      if (m < 60) return `${m}m ago`;
+      const h = Math.floor(m / 60);
+      if (h < 24) return `${h}h ago`;
+      return `${Math.floor(h / 24)}d ago`;
+    }
+
+    function hash(str) {
+      let h = 0;
+      for (let i = 0; i < str.length; i++) h = (h * 31 + str.charCodeAt(i)) >>> 0;
+      return h;
     }
 
     function escapeHtml(str) {
-      if (!str) return "";
-      return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+      if (str === null || str === undefined) return "";
+      return String(str).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
     }
   </script>
 </body>
